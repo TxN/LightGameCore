@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 
 using UnityEngine;
@@ -17,7 +16,7 @@ public sealed class SlideShowAnim : MonoBehaviour {
 
 	void Start() {
 		_renderer = GetComponent<SpriteRenderer>();
-		_image = GetComponent<Image>();
+		_image    = GetComponent<Image>();
 		_nextFrameTime = Time.time + Delays[_frameIndex];
 		if ( _renderer ) {
 			_renderer.sprite = Sprites[0];

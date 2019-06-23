@@ -1,7 +1,7 @@
 ﻿using UnityEngine.UI;
 
 namespace CookingCapital.Utils {
-	public class EmptyGraphic : Graphic {
+	public sealed class EmptyGraphic : Graphic {
 		protected override void OnPopulateMesh(VertexHelper vh) {
 			vh.Clear();
 		}

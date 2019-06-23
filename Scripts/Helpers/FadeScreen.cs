@@ -1,3 +1,4 @@
+#if DOTWEEN
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -67,3 +68,4 @@ public sealed class FadeScreen : MonoBehaviour {
 		}
 	}
 }
+#endif

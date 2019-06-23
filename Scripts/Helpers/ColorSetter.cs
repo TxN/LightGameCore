@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class ColorSetter {
+public sealed class ColorSetter {
 	public static void UpdateModelColor(GameObject target, Color color) {
 		var meshes = target.GetComponentsInChildren<MeshRenderer>(true);
 		foreach (var mesh in meshes) {
