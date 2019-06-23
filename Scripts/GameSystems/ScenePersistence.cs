@@ -1,6 +1,6 @@
 namespace SMGCore {
 	public sealed class ScenePersistence : MonoSingleton<ScenePersistence> {
-		public PersistentDataHolder Data { get; private set; } = new PersistentDataHolder();
+		public PersistentDataHolder Data { get; private set; } = null;
 
 		protected override void Awake() {
 			base.Awake();
