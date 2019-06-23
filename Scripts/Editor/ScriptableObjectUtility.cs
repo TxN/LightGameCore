@@ -2,6 +2,8 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
+using SMGCore;
+
 namespace SMGCore.Editor {
 	public static class ScriptableObjectUtility {
 		/// <summary>
