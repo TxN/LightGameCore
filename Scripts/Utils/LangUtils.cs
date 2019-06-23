@@ -1,10 +1,10 @@
-using UnityEngine;
 using System;
-using System.Linq;
 using System.Globalization;
 using System.Collections.Generic;
 
-namespace Utils {
+using UnityEngine;
+
+namespace SMGCore.Utils {
 	public static class TimeUtils {
 		static public DateTime GetOriginTime() {
 			return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);

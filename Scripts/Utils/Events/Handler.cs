@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
 
-namespace EventSys {
+namespace SMGCore.EventSys {
 	public abstract class HandlerBase {
 		public static bool LogsEnabled {
 			get { return false;	}

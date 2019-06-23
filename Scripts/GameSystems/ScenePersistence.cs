@@ -1,12 +1,14 @@
-public sealed class ScenePersistence : MonoSingleton<ScenePersistence> {
-    public PersistentDataHolder Data { get; private set; } = new PersistentDataHolder();
+namespace SMGCore {
+	public sealed class ScenePersistence : MonoSingleton<ScenePersistence> {
+		public PersistentDataHolder Data { get; private set; } = new PersistentDataHolder();
 
-	protected override void Awake() {
-		base.Awake();
-		DontDestroyOnLoad(gameObject);
-	}
+		protected override void Awake() {
+			base.Awake();
+			DontDestroyOnLoad(gameObject);
+		}
 
-	public void ClearData() {
-		Data = new PersistentDataHolder();
+		public void ClearData() {
+			Data = new PersistentDataHolder();
+		}
 	}
 }

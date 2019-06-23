@@ -1,12 +1,12 @@
-using UnityEngine;
-
 using System;
 using System.IO;
 using System.Xml;
 
+using UnityEngine;
+
 using JetBrains.Annotations;
 
-namespace Utils.Xml {
+namespace SMGCore.Utils.Xml {
 	public static class XmlUtils {		
 		[CanBeNull]
 		public static XmlDocument LoadXmlDocumentFromText(string text) {

@@ -1,8 +1,8 @@
-using UnityEngine;
-
 using System.Xml;
 
-namespace Utils.Xml {
+using UnityEngine;
+
+namespace SMGCore.Utils.Xml {
 	public static class XmlElementExtensions {
 	
 		public static void AddAttrValue(this XmlElement elem, string name, string value) {

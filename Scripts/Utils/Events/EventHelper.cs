@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace EventSys {
+namespace SMGCore.EventSys {
 	public sealed class EventHelper : MonoBehaviour {
 
 		[Serializable]

@@ -1,13 +1,12 @@
 using UnityEngine;
 
-namespace CookingCapital.WorldMap {
+namespace SMGCore {
 	public sealed class ParallaxElement : MonoBehaviour {
 
-		public Transform cam     = null;
-
+		public Transform   cam  = null;
 		public Transform[] backgrounds;
 		public float[]     parallaxScales;
-		public float       smoothing      = 1f;
+		public float       smoothing = 1f;
 
 		private Vector3[] _parallaxInitPoss;
 		private Vector3   _cameraInitPos;
@@ -23,7 +22,6 @@ namespace CookingCapital.WorldMap {
 
 		void LateUpdate() {
 			float cameraDelta = cam.position.x - _cameraInitPos.x;
-
 			
 			for ( int i = 0; i < backgrounds.Length; i++ ) {
 				if ( Mathf.Abs(parallaxScales[i]) <= Mathf.Epsilon) {
@@ -33,6 +31,5 @@ namespace CookingCapital.WorldMap {
 				backgrounds[i].position = newPos;
 			}
 		}
-
 	}
 }

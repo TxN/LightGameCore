@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
 
-namespace EventSys {
+namespace SMGCore.EventSys {
 	public sealed class EventManager {
 
 		public const float CleanUpInterval = 10.0f;

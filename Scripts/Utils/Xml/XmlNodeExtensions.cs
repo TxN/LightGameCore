@@ -1,11 +1,11 @@
-using UnityEngine;
-
 using System;
 using System.Xml;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace Utils.Xml {
+using UnityEngine;
+
+namespace SMGCore.Utils.Xml {
 	public static class XmlNodeExtensions {
 		
 		public static bool TryGetAttrValue(this XmlNode node, string name, out bool result) {

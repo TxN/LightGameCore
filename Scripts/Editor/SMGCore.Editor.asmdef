@@ -1,0 +1,17 @@
+{
+    "name": "SMGCore.Editor",
+    "references": [
+        "GUID:4857a406fc5f9224ea43aac6b10d79d7"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}
