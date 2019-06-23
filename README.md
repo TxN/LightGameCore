@@ -1,2 +1,2 @@
 # LightGameCore
-Small collection of useful scripts which may be useful in creating a jam game.
+A small collection of useful scripts which may come in handy in creating a jam game.
