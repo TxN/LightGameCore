@@ -33,8 +33,7 @@ namespace SMGCore {
 		}
 
 		public void FadeToWhite(float time, bool disableRaycasts = false) {
-			CheckCanvasGroup();
-			gameObject.SetActive(true);
+			CheckCanvasGroup();			gameObject.SetActive(true);
 			CanvasGroup.alpha = 1f;
 			CanvasGroup.blocksRaycasts = disableRaycasts;
 			_seq = TweenHelper.ReplaceSequence(_seq, false);

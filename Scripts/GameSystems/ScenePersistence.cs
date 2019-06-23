@@ -6,9 +6,9 @@ namespace SMGCore {
 			base.Awake();
 			DontDestroyOnLoad(gameObject);
 		}
-
-		public void ClearData() {
-			Data = new PersistentDataHolder();
+		
+		public void SetupHolder(PersistentDataHolder data) {
+			Data = data;
 		}
 	}
 }
