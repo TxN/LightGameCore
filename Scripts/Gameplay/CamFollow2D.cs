@@ -14,6 +14,9 @@ namespace SMGCore {
 		}
 
 		void LateUpdate() {
+			if ( !player ) {
+				return;
+			}
 			_moveError = Vector3.Distance(transform.position, player.position) - initDelta;
 			var cLerp = lerpCoef.Evaluate(_moveError);
 			var newPos = Vector3.Lerp(transform.position, player.position, cLerp);
