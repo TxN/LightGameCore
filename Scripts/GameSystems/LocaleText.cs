@@ -19,13 +19,11 @@ namespace SMGCore {
 
 		void Start() {
 			UpdateText();
-		}
-
-		void OnEnable() {
 			EventManager.Subscribe<Event_LanguageChanged>(this, OnLanguageChanged);
 		}
 
-		void OnDisable() {
+
+		void OnDestroy() {
 			EventManager.Unsubscribe<Event_LanguageChanged>(OnLanguageChanged);
 		}
 
