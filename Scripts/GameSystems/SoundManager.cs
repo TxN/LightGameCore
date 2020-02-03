@@ -37,7 +37,7 @@ namespace SMGCore {
 			_musicSource.Play();
 		}
 
-		public void PlaySound(string soundName, float volume = 1f, float pitch = 1f) {
+		public void PlaySound(string soundName, float volume = 1f, float pitch = 1f, bool loop = false) {
 			TryInit();
 			var soundClip = GetSoundClip(soundName);
 			if ( soundClip == null ) {
@@ -48,8 +48,9 @@ namespace SMGCore {
 			source.volume = volume;
 			source.pitch = pitch;
 			source.clip = soundClip;
+			source.loop = loop;
 			source.Play();
-		}
+		} 
 
 		public void StopMusic() {
 			TryInit();
@@ -60,6 +61,21 @@ namespace SMGCore {
 			TryInit();
 			foreach ( var source in _soundSources ) {
 				source.Stop();
+			}
+		}
+		public void StopSound(string soundName, bool instant = true) {
+			TryInit();
+			var clip = GetSoundClip(soundName);
+			if ( clip != null ) {
+				foreach ( var source in _soundSources ) {
+					if ( source.clip == clip ) {
+						if ( instant ) {
+							source.Stop();
+						} else {
+							source.loop = false;
+						}
+					}
+				} 
 			}
 		}
 
