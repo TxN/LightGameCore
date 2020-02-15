@@ -3,7 +3,8 @@ using System.Collections;
 
 namespace SMGCore {
 	public sealed class CameraShake : MonoBehaviour {
-
+		public float MaxAmount = 5f;
+		public float MaxDuration = 2f;
 		public bool debugMode = false; //Calls ShakeCamera() on start
 
 		public float shakeAmount;  //The amount to shake this frame.
@@ -36,9 +37,9 @@ namespace SMGCore {
 
 		public void ShakeCamera(float amount, float duration) {
 			decay = false;
-			shakeAmount += amount;
+			shakeAmount = Mathf.Clamp(shakeAmount + amount,0, MaxAmount);
 			startAmount = shakeAmount;
-			shakeDuration += duration;
+			shakeDuration = Mathf.Clamp(shakeDuration + duration, 0 , MaxDuration);
 			startDuration = shakeDuration;
 
 			if ( !isRunning ) {
