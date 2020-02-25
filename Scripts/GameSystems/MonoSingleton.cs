@@ -15,6 +15,8 @@ namespace SMGCore {
 			}
 		}
 
+		public static bool IsAlive { get { return _instance; } }
+
 		static T _instance = null;
 
 		protected virtual void Awake() {
