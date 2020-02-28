@@ -6,6 +6,9 @@ using JetBrains.Annotations;
 
 namespace SMGCore {
 	public sealed class SoundManager : MonoSingleton<SoundManager> {
+		const string RunnedPrefsPar  = "SoundManager_RunnedPreviously";
+		const string SoundPrefsPar   = "SoundManager_SoundEnabled";
+		const string MusicPrefsPar   = "SoundManager_MusicEnabled";
 		const string SoundLibPath    = "Sounds/SoundLibrary";
 		const int    MaxSoundSources = 8;
 
@@ -16,8 +19,44 @@ namespace SMGCore {
 		Dictionary<string, AudioClip> _soundDict    = null;
 		Dictionary<string, AudioClip> _musicDict    = null;
 
+		public bool SoundEnabled {
+			get {
+				return PlayerPrefs.GetFloat(SoundPrefsPar) > 0.01f;
+			}
+			set {
+				var val = value ? 1f : 0f;
+				AudioListener.volume = val;
+				PlayerPrefs.SetFloat(SoundPrefsPar, val);
+			}
+		}
+
+		public bool MusicEnabled {
+			get {
+				return PlayerPrefs.GetFloat(MusicPrefsPar) > 0.01f;
+			}
+			set {
+				var val = value ? 1f : 0f;
+				if ( _musicSource ) {
+					_musicSource.volume = val;
+				}				
+				PlayerPrefs.SetFloat(MusicPrefsPar, val);
+			}
+		}
+
 		protected override void Awake() {
 			base.Awake();
+			if ( PlayerPrefs.GetInt(RunnedPrefsPar) != 1) {
+				SoundEnabled = true;
+				MusicEnabled = true;
+				PlayerPrefs.SetInt(RunnedPrefsPar, 1);
+			}
+			if ( !SoundEnabled ) {
+				AudioListener.volume = 0f;
+			}
+			if ( !MusicEnabled ) {
+				_musicSource.volume = 0f;
+			}
+
 			DontDestroyOnLoad(gameObject);
 			TryInit();
 		}
