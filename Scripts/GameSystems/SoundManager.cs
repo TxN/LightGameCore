@@ -53,7 +53,7 @@ namespace SMGCore {
 			if ( !SoundEnabled ) {
 				AudioListener.volume = 0f;
 			}
-			if ( !MusicEnabled ) {
+			if ( !MusicEnabled && _musicSource ) {
 				_musicSource.volume = 0f;
 			}
 
@@ -70,6 +70,7 @@ namespace SMGCore {
 			if ( _musicSource.clip == musicClip ) {
 				return;
 			}
+			_musicSource.volume = MusicEnabled ? 1f : 0f;
 			_musicSource.loop = true;
 			_musicSource.Stop();
 			_musicSource.clip = musicClip;
