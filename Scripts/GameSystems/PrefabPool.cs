@@ -6,7 +6,7 @@ namespace SMGCore {
 
 		protected string PresenterPrefabPath = "";
 
-		GameObject _prefab = null;
+		protected GameObject _prefab = null;
 		Queue<T> _readyObjects = new Queue<T>();
 
 		public virtual void Init() {
