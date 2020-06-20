@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace SMGCore {
-	public class PrefabPool<T> where T : MonoBehaviour, IPoolItem {
+	public class PrefabPool<T> : BasePool where T : PoolItem {
 
 		protected string PresenterPrefabPath = "";
 
@@ -32,6 +32,18 @@ namespace SMGCore {
 			var instance = Object.Instantiate(_prefab);
 			var c = instance.GetComponent<T>();
 			return c;
+		}
+
+		public override PoolItem GetGeneric() {
+			return Get();
+		}
+
+		public override void ReturnGeneric(PoolItem item) {
+			Return((T)item);
+		}
+
+		public override PoolItem GetNewGeneric() {
+			return GetNew();
 		}
 	}
 
