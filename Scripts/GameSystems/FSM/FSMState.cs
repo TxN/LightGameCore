@@ -54,6 +54,9 @@ namespace SMGCore.FSM {
 							ChangeStatus(StateStatus.Exit);
 							break;
 						}
+					} else if ( _skipMainStatus ) {
+						_skipMainStatus = false;
+						ChangeStatus(StateStatus.Exit);
 					}
 					ProcessActiveStatus();
 					break;
@@ -120,7 +123,9 @@ namespace SMGCore.FSM {
 			return true;
 		}
 
-		public abstract void ActivateState();
+		public virtual void ActivateState() {
+			ChangeStatus(StateStatus.Enter);
+		}
 
 		protected abstract void ProcessEnterStatus();
 

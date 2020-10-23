@@ -17,7 +17,7 @@ namespace SMGCore.FSM {
 		}
 
 		public FSMState<T> Initialize() {
-			_currentState = _description.CreateInitialState();
+			_currentState = _description.CreateInitialState(this);
 			return _currentState;
 		}
 
@@ -32,7 +32,7 @@ namespace SMGCore.FSM {
 				return false;
 			}
 
-			var s = _description.CreateStateFromType(newStateType);
+			var s = _description.CreateStateFromType(newStateType, this);
 			return TryChangeState(s);
 		}
 
@@ -47,7 +47,7 @@ namespace SMGCore.FSM {
 			if ( _currentState == null ) {
 				return false;
 			}
-			var s = _description.CreateStateFromType(nextStateType);
+			var s = _description.CreateStateFromType(nextStateType, this);
 			return TrySetNextState(s);
 		}
 
@@ -70,7 +70,7 @@ namespace SMGCore.FSM {
 
 
 		public void OnNeedSwitchState(T newState) {
-			var s = _description.CreateStateFromType(newState);
+			var s = _description.CreateStateFromType(newState, this);
 			if ( s != null ) {
 				OnNeedSwitchState(s);
 			}
