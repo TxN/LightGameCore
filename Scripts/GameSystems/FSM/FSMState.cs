@@ -50,7 +50,6 @@ namespace SMGCore.FSM {
 				case StateStatus.Active:
 					if ( TimeToExit >= 0f && !ExitState.Equals(EmptyState) ) {
 						if ( _currentTime > TimeToExit + InTransitionTime ) {
-							PreprocessExitStatus();
 							ChangeStatus(StateStatus.Exit);
 							break;
 						}
@@ -62,7 +61,7 @@ namespace SMGCore.FSM {
 					break;
 				case StateStatus.Exit:
 					ProcessExitStatus();
-					if ( OutTransitionTime <= 0 || ( _currentTime > _exitStatusEnterTime ) ) {
+					if ( OutTransitionTime <= 0 || ( _currentTime > _exitStatusEnterTime + OutTransitionTime ) ) {
 						PostprocessExitStatus();
 						if ( _nextState != null ) {
 							Owner.OnNeedSwitchState(_nextState);							
@@ -82,6 +81,7 @@ namespace SMGCore.FSM {
 			CurrentStatus = newStatus;
 			if ( newStatus == StateStatus.Exit ) {
 				_exitStatusEnterTime = _currentTime;
+				PreprocessExitStatus();
 			}
 			ProcessState();
 		}
