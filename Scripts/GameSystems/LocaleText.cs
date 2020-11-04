@@ -42,5 +42,19 @@ namespace SMGCore {
 				_textComponent.text = LocalizationController.Instance.Translate(Id);
 			}
 		}
+
+		public void UpdateText(string id) {
+			Id = id;
+			if ( string.IsNullOrEmpty(id) ) {
+				if ( _tmpComponent ) {
+					_tmpComponent.text = LocalizationController.Instance.Translate(Id);
+				}
+				if ( _textComponent ) {
+					_textComponent.text = LocalizationController.Instance.Translate(Id);
+				}
+			} else {
+				UpdateText();
+			}
+		}
 	}
 }
