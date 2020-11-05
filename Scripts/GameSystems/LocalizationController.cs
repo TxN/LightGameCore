@@ -55,6 +55,16 @@ namespace SMGCore {
 			return string.IsNullOrEmpty(result.Text) ? string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1)) : result.Text;
 		}
 
+		public TranslationNode GetTranslationNode(string id) {
+			_currentLocale.TryGetValue(id, out TranslationNode result);
+			return result;
+		}
+
+		public TranslationNode GetSameLevelNode(string sourceId, string targetName) {
+			var basePath = sourceId.Substring(0, sourceId.LastIndexOf('.'));
+			return GetTranslationNode($"{basePath}.{targetName}");
+		}
+
 		public void ChangeLanguage(SystemLanguage language) {
 			CurrentLanguage = language;
 			Load();
@@ -90,7 +100,7 @@ namespace SMGCore {
 				? node.Name
 				: string.Format("{0}.{1}", prefix, node.Name);
 			if ( !string.IsNullOrEmpty(text) ) {
-				var n = LoadNode(node);
+				var n = LoadNode(node, new_prefix);
 				if ( !dict.ContainsKey(new_prefix) ) {
 					dict.Add(new_prefix, n);
 				} else {
@@ -103,19 +113,22 @@ namespace SMGCore {
 			}
 		}
 
-		public static TranslationNode LoadNode(XmlNode node) {
+		static TranslationNode LoadNode(XmlNode node, string path) {
 			var n = new TranslationNode {
+				Path = path,
 				Text = node.GetAttrValue("text", string.Empty),
-				Duration = node.GetAttrValue("duration", 0f)
+				Duration = node.GetAttrValue("duration", 0f),
+				NextLine = node.GetAttrValue("next", null)
 			};
 			return n;
 		}
 	}
 
 	public sealed class TranslationNode {
+		public string Path;
 		public string Text;
-		public float Duration = 0f;
-
+		public string NextLine;
+		public float  Duration = 3f;
 	}
 
 	public struct Event_LanguageChanged { public SystemLanguage Language; }
