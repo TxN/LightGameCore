@@ -11,8 +11,9 @@ namespace SMGCore {
 
 		public const SystemLanguage DefaultLanguage   = SystemLanguage.English;
 		public const string         LocFileFormatPath = "Configs/Locale_{0}";
+		public const string         EmptyLocString    = "!{0}!";
 
-		Dictionary<string, string> _currentLocale = new Dictionary<string, string>();
+		Dictionary<string, TranslationNode> _currentLocale = new Dictionary<string, TranslationNode>();
 
 		public static readonly List<SystemLanguage> SupportedLanguages = new List<SystemLanguage> {
 		SystemLanguage.English,
@@ -46,8 +47,12 @@ namespace SMGCore {
 		}
 
 		public string Translate(string id) {
-			_currentLocale.TryGetValue(id, out string result);
-			return string.IsNullOrEmpty(result) ? string.Format("!{0}!", id.Substring(id.LastIndexOf('.') + 1)) : result;
+			_currentLocale.TryGetValue(id, out TranslationNode result);
+			if ( result == null ) {
+				return string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1));
+			}
+
+			return string.IsNullOrEmpty(result.Text) ? string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1)) : result.Text;
 		}
 
 		public void ChangeLanguage(SystemLanguage language) {
@@ -59,9 +64,8 @@ namespace SMGCore {
 		void Load() {
 			if ( _currentLocale != null ) {
 				_currentLocale.Clear();
-			}
-			else {
-				_currentLocale = new Dictionary<string, string>(512);
+			} else {
+				_currentLocale = new Dictionary<string, TranslationNode>();
 			}
 			var loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
 			if ( loc == null ) {
@@ -80,17 +84,17 @@ namespace SMGCore {
 			Debug.LogFormat("Locale load finished. Loaded {0} elements.", _currentLocale.Count);
 		}
 
-		static void LoadTranslationNode(XmlNode node, string prefix, IDictionary<string, string> dict) {
+		static void LoadTranslationNode(XmlNode node, string prefix, IDictionary<string, TranslationNode> dict) {
 			var text = node.GetAttrValue("text", string.Empty);
 			var new_prefix = string.IsNullOrEmpty(prefix)
 				? node.Name
 				: string.Format("{0}.{1}", prefix, node.Name);
 			if ( !string.IsNullOrEmpty(text) ) {
+				var n = LoadNode(node);
 				if ( !dict.ContainsKey(new_prefix) ) {
-					dict.Add(new_prefix, text);
-				}
-				else {
-					dict[new_prefix] = text;
+					dict.Add(new_prefix, n);
+				} else {
+					dict[new_prefix] = n;
 					Debug.LogErrorFormat("Duplicate entries in loc file for '{0}'", new_prefix);
 				}
 			}
@@ -98,6 +102,20 @@ namespace SMGCore {
 				LoadTranslationNode(child, new_prefix, dict);
 			}
 		}
+
+		public static TranslationNode LoadNode(XmlNode node) {
+			var n = new TranslationNode {
+				Text = node.GetAttrValue("text", string.Empty),
+				Duration = node.GetAttrValue("duration", 0f)
+			};
+			return n;
+		}
+	}
+
+	public sealed class TranslationNode {
+		public string Text;
+		public float Duration = 0f;
+
 	}
 
 	public struct Event_LanguageChanged { public SystemLanguage Language; }
