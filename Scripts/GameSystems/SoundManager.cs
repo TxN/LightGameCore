@@ -77,20 +77,32 @@ namespace SMGCore {
 			_musicSource.Play();
 		}
 
-		public void PlaySound(string soundName, float volume = 1f, float pitch = 1f, bool loop = false) {
+		public AudioSource PlaySound(string soundName, float volume = 1f, float pitch = 1f, bool loop = false) {
 			TryInit();
 			var soundClip = GetSoundClip(soundName);
 			if ( soundClip == null ) {
-				return;
+				return null;
 			}
 			var source = GetFreeSoundSource();
 			source.Stop();
+			source.spatialBlend = 0f;
 			source.volume = volume;
 			source.pitch = pitch;
 			source.clip = soundClip;
 			source.loop = loop;
 			source.Play();
-		} 
+			return source;
+		}
+
+		public AudioSource Play3DSound(string soundName, Vector3 position, float volume = 1f, float pitch = 1f, bool loop = false) {
+			var s = PlaySound(soundName, volume, pitch, loop);
+			if ( !s ) {
+				return null;
+			}
+			s.transform.position = position;
+			s.spatialBlend = 1f;
+			return s;
+		}
 
 		public void StopMusic() {
 			TryInit();
