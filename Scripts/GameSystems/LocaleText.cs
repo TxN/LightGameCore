@@ -6,6 +6,7 @@ using SMGCore.EventSys;
 using TMPro;
 
 namespace SMGCore {
+	[DisallowMultipleComponent]
 	public sealed class LocaleText : MonoBehaviour {
 		public string Id = string.Empty;
 
