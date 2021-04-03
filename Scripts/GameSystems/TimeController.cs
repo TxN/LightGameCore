@@ -22,6 +22,15 @@ namespace SMGCore {
 			}
 		}
 
+		public float DeltaTime {
+			get {
+				if ( IsPause ) {
+					return 0f;
+				}
+				return Time.deltaTime * TimeScale;
+			}
+		}
+
 		public void AddPause(Object holder) {
 			var lastPause = IsPause;
 			_pauseHolders.Add(holder);
