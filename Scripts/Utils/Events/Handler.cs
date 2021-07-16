@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 
+#if UNITY_2017_3_OR_NEWER
 using UnityEngine;
+#endif
 
 namespace SMGCore.EventSys {
 	public abstract class HandlerBase {
@@ -92,6 +94,7 @@ namespace SMGCore.EventSys {
 			int count = 0;
 			for (int i = 0; i < _watchers.Count; i++) {
 				var watcher = _watchers[i];
+#if UNITY_2017_3_OR_NEWER
 				if ( watcher is MonoBehaviour ) {
 					var comp = watcher as MonoBehaviour;
 					if (!comp) {
@@ -100,6 +103,7 @@ namespace SMGCore.EventSys {
 						count++;
 					}
 				}
+#endif
 			}
 			return count == 0;
 		}

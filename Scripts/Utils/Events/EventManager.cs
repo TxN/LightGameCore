@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 
+#if UNITY_2017_3_OR_NEWER
 using UnityEngine;
+#endif
 
 namespace SMGCore.EventSys {
 	public sealed class EventManager {
@@ -13,7 +15,9 @@ namespace SMGCore.EventSys {
 			get {
 				if ( _instance == null ) {
 					_instance = new EventManager();
+#if UNITY_2017_3_OR_NEWER
 					_instance.AddHelper();
+#endif
 				}
 				return _instance;
 			}
@@ -46,8 +50,8 @@ namespace SMGCore.EventSys {
 		}
 
 		void Sub<T>(object watcher, Action<T> action) {
-			HandlerBase handler = null;
-			if (!_handlers.TryGetValue(typeof(T), out handler)) {
+			HandlerBase handler;
+			if ( !_handlers.TryGetValue(typeof(T), out handler) ) {
 				handler = new Handler<T>();
 				_handlers.Add(typeof(T), handler);
 			}
@@ -78,10 +82,12 @@ namespace SMGCore.EventSys {
 			return false;
 		}
 
+#if UNITY_2017_3_OR_NEWER
 		void AddHelper() {
 			var go = new GameObject("[EventHelper]");
 			go.AddComponent<EventHelper>();
 		}
+#endif
 
 		public void CheckHandlersOnLoad() {
 			var iter = _handlers.GetEnumerator();
