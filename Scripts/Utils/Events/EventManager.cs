@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 #if UNITY_2017_3_OR_NEWER
 using UnityEngine;
@@ -23,13 +23,13 @@ namespace SMGCore.EventSys {
 			}
 		}
 
-		public Dictionary<Type, HandlerBase> Handlers {
+		public ConcurrentDictionary<Type, HandlerBase> Handlers {
 			get {
 				return _handlers;
 			}
 		}
 
-		Dictionary<Type, HandlerBase> _handlers = new Dictionary<Type, HandlerBase>(100);
+		ConcurrentDictionary<Type, HandlerBase> _handlers = new ConcurrentDictionary<Type, HandlerBase>();
 
 		public static void Subscribe<T>(object watcher, Action<T> action) where T : struct {
 			Instance.Sub(watcher, action);
@@ -52,8 +52,7 @@ namespace SMGCore.EventSys {
 		void Sub<T>(object watcher, Action<T> action) {
 			HandlerBase handler;
 			if ( !_handlers.TryGetValue(typeof(T), out handler) ) {
-				handler = new Handler<T>();
-				_handlers.Add(typeof(T), handler);
+				handler = _handlers.GetOrAdd(typeof(T), new Handler<T>());
 			}
 			(handler as Handler<T>).Subscribe(watcher, action);
 		}
@@ -68,8 +67,7 @@ namespace SMGCore.EventSys {
 		void FireEvent<T>(T args) {
 			HandlerBase handler = null;
 			if (!_handlers.TryGetValue(typeof(T), out handler)) {
-				handler = new Handler<T>();
-				_handlers.Add(typeof(T), handler);
+				handler = _handlers.GetOrAdd(typeof(T), new Handler<T>());
 			}
 			(handler as Handler<T>).Fire(args);
 		}
