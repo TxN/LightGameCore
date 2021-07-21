@@ -19,6 +19,8 @@ namespace SMGCore {
 		Dictionary<string, AudioClip> _soundDict    = null;
 		Dictionary<string, AudioClip> _musicDict    = null;
 
+		public bool IsFullyDisabled { get; set; } = false;
+
 		public bool SoundEnabled {
 			get {
 				return PlayerPrefs.GetFloat(SoundPrefsPar) > 0.01f;
@@ -62,6 +64,9 @@ namespace SMGCore {
 		}
 
 		public void PlayMusic(string clipName) {
+			if ( IsFullyDisabled ) {
+				return;
+			}
 			TryInit();
 			var musicClip = GetMusicClip(clipName);
 			if ( musicClip == null ) {
@@ -78,6 +83,9 @@ namespace SMGCore {
 		}
 
 		public void PlaySound(string soundName, float volume = 1f, float pitch = 1f, bool loop = false) {
+			if ( IsFullyDisabled ) {
+				return;
+			}
 			TryInit();
 			var soundClip = GetSoundClip(soundName);
 			if ( soundClip == null ) {
@@ -94,16 +102,25 @@ namespace SMGCore {
 
 		public void StopMusic() {
 			TryInit();
-			_musicSource.Stop();
+			if ( _musicSource ) {
+				_musicSource.Stop();
+			}
+			
 		}
 
 		public void StopAllSounds() {
+			if ( IsFullyDisabled ) {
+				return;
+			}
 			TryInit();
 			foreach ( var source in _soundSources ) {
 				source.Stop();
 			}
 		}
 		public void StopSound(string soundName, bool instant = true) {
+			if ( IsFullyDisabled ) {
+				return;
+			}
 			TryInit();
 			var clip = GetSoundClip(soundName);
 			if ( clip != null ) {
@@ -121,6 +138,9 @@ namespace SMGCore {
 
 		[CanBeNull]
 		public AudioClip GetSoundClip(string clipName) {
+			if ( IsFullyDisabled ) {
+				return null;
+			}
 			TryInit();
 			if ( !_soundDict.TryGetValue(clipName, out AudioClip result) ) {
 				Debug.LogWarningFormat("Cannot find sound with name '{0}'", clipName);
@@ -130,6 +150,9 @@ namespace SMGCore {
 
 		[CanBeNull]
 		public AudioClip GetMusicClip(string clipName) {
+			if ( IsFullyDisabled ) {
+				return null;
+			}
 			TryInit();
 			if ( !_musicDict.TryGetValue(clipName, out AudioClip result) ) {
 				Debug.LogWarningFormat("Cannot find music with name '{0}'", clipName);
@@ -144,6 +167,9 @@ namespace SMGCore {
 		}
 
 		void Init() {
+			if ( IsFullyDisabled ) {
+				return;
+			}
 			_library = Resources.Load<SoundLibrary>(SoundLibPath);
 			Debug.Assert(_library != null, "Sound library is null");
 			_soundDict = FillDict(_library.Sounds);
