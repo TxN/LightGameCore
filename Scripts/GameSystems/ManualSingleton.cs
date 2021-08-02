@@ -14,12 +14,12 @@ namespace SMGCore {
 		static T _instance = null;
 
 		protected virtual void Awake() {
-			if ( _instance != null && _instance != this ) {
+			if ( _instance && _instance != this ) {
 				Destroy(this);
 				return;
 			}
 
-			if ( _instance == null ) {
+			if ( !_instance ) {
 				_instance = gameObject.GetComponent<T>();
 			}
 		}
