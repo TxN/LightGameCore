@@ -5,7 +5,10 @@ namespace SMGCore {
 		public static T Instance {
 			get {
 				if ( !_instance ) {
-					_instance = (T)FindObjectOfType(typeof(T));
+					_instance = FindObjectOfType<T>(true);
+					if ( !_instance ) {
+						Debug.LogWarning($"ManualSingleton({typeof(T).ToString()}).InstanceProperty: Cannot find instance");
+					}
 				}
 				return _instance;
 			}
@@ -15,12 +18,16 @@ namespace SMGCore {
 
 		protected virtual void Awake() {
 			if ( _instance && _instance != this ) {
+				Debug.LogWarning($"ManualSingleton({typeof(T).ToString()}).Awake: another alive instance is found");
 				Destroy(this);
 				return;
 			}
 
 			if ( !_instance ) {
-				_instance = gameObject.GetComponent<T>();
+				_instance = GetComponent<T>();
+				if ( !_instance ) {
+					Debug.LogWarning($"ManualSingleton({typeof(T).ToString()}).Awake: Unable to set object as singleton instance: cannot find such component.");
+				}
 			}
 		}
 	}
