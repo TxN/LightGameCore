@@ -14,6 +14,15 @@ namespace SMGCore {
 			}
 		}
 
+		public static T WeakInstance {
+			get {
+				if ( !_instance ) {
+					return null;
+				}
+				return _instance;
+			}
+		}
+
 		static T _instance = null;
 
 		protected virtual void Awake() {
