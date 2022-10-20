@@ -1,3 +1,4 @@
+using log4net.Util;
 using System;
 using System.Collections.Generic;
 
@@ -91,19 +92,18 @@ namespace SMGCore.EventSys {
 
 		public override bool FixWatchers() {
 			CleanUp();
-			int count = 0;
-			for (int i = 0; i < _watchers.Count; i++) {
-				var watcher = _watchers[i];
-#if UNITY_2017_3_OR_NEWER
-				if ( watcher is MonoBehaviour ) {
-					var comp = watcher as MonoBehaviour;
-					if (!comp) {
+			var count = 0;
+			for ( var i = 0; i < Watchers.Count; i++ ) {
+				var watcher = Watchers[i];
+				if ( watcher is MonoBehaviour behaviour ) {
+					if ( !behaviour ) {
 						SafeUnsubscribe(i);
-						i--;
 						count++;
 					}
 				}
-#endif
+			}
+			if ( count > 0 ) {
+				CleanUp();
 			}
 			return count == 0;
 		}
