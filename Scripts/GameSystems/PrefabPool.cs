@@ -18,19 +18,23 @@ namespace SMGCore {
 
 		public virtual T Get() {
 			if ( _readyObjects.Count > 0 ) {
-				return _readyObjects.Dequeue();
+				var item = _readyObjects.Dequeue();
+				item.gameObject.SetActive(true);
+				return item;
 			}
 			return GetNew();
 		}
 
 		public virtual void Return(T item) {
 			item.DeInit();
+			item.gameObject.SetActive(false);
 			_readyObjects.Enqueue(item);
 		}
 
 		protected virtual T GetNew() {
 			var instance = Object.Instantiate(_prefab);
 			var c = instance.GetComponent<T>();
+			c.gameObject.SetActive(true);
 			return c;
 		}
 
