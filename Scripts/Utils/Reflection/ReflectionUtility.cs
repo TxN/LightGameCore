@@ -21,5 +21,16 @@ namespace SMGCore.Utils {
 		public static object CreateObjectWithActivator(Type type) {
 			return Activator.CreateInstance(type);
 		}
+
+		public static void SetPropertyValue(object obj, string propertyName, object value) {
+			if ( obj == null || string.IsNullOrEmpty(propertyName) ) {
+				return;
+			}
+			var propertyInfo = obj.GetType().GetProperty(propertyName);
+			if ( propertyInfo == null ) {
+				return;
+			}
+			propertyInfo.SetValue(obj, value);
+		}
 	}
 }
