@@ -162,7 +162,7 @@ namespace SMGCore {
 			_musicDict = FillDict(_library.Music);
 
 			foreach ( Transform child in transform ) {
-				Destroy(child);
+				Destroy(child.gameObject);
 			}
 
 			var musicHolder = new GameObject("Music");
