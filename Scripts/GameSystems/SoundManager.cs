@@ -56,8 +56,10 @@ namespace SMGCore {
 			if ( !MusicEnabled && _musicSource ) {
 				_musicSource.volume = 0f;
 			}
-
-			DontDestroyOnLoad(gameObject);
+			if ( !transform.parent ) {
+				DontDestroyOnLoad(gameObject);
+			}
+			
 			TryInit();
 		}
 
