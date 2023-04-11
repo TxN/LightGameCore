@@ -9,6 +9,7 @@ namespace SMGCore {
 		const string RunnedPrefsPar  = "SoundManager_RunnedPreviously";
 		const string SoundPrefsPar   = "SoundManager_SoundEnabled";
 		const string MusicPrefsPar   = "SoundManager_MusicEnabled";
+		const string SoundsPrefsPar  = "SoundManager_SoundsEnabled";
 		const string SoundLibPath    = "Sounds/SoundLibrary";
 		const int    MaxSoundSources = 8;
 
@@ -18,6 +19,9 @@ namespace SMGCore {
 		List<AudioSource>             _soundSources = null;
 		Dictionary<string, AudioClip> _soundDict    = null;
 		Dictionary<string, AudioClip> _musicDict    = null;
+
+		bool _soundsEnabled = true;
+		readonly Dictionary<AudioSource, float> _soundSourcesCachedVolumes = new();
 
 		public bool SoundEnabled {
 			get {
@@ -43,11 +47,35 @@ namespace SMGCore {
 			}
 		}
 
+		public bool SoundsEnabled {
+			get => PlayerPrefs.GetFloat(SoundsPrefsPar) > 0.01f;
+			set {
+				_soundsEnabled = value; 
+				var val = _soundsEnabled ? 1f : 0f;
+				PlayerPrefs.SetFloat(SoundsPrefsPar, val);
+
+				if ( _soundsEnabled ) {
+					foreach ( var entry in _soundSourcesCachedVolumes ) {
+						entry.Key.volume = entry.Value;
+					}
+				} else {
+					_soundSourcesCachedVolumes.Clear();
+					foreach ( var source in _soundSources ) {
+						if ( source.isPlaying && source.volume != 0 ) {
+							_soundSourcesCachedVolumes.Add(source, source.volume); 
+						}
+						source.volume = 0;
+					} 
+				}
+			} 
+		}
+
 		protected override void Awake() {
 			base.Awake();
 			if ( PlayerPrefs.GetInt(RunnedPrefsPar) != 1) {
 				SoundEnabled = true;
 				MusicEnabled = true;
+				SoundsEnabled = true;
 				PlayerPrefs.SetInt(RunnedPrefsPar, 1);
 			}
 			if ( !SoundEnabled ) {
@@ -56,6 +84,7 @@ namespace SMGCore {
 			if ( !MusicEnabled && _musicSource ) {
 				_musicSource.volume = 0f;
 			}
+			_soundsEnabled = SoundsEnabled;
 			if ( !transform.parent ) {
 				DontDestroyOnLoad(gameObject);
 			}
@@ -86,6 +115,8 @@ namespace SMGCore {
 				return null;
 			}
 			var source = GetFreeSoundSource();
+			if ( !_soundsEnabled )
+				return source;
 			source.Stop();
 			source.spatialBlend = 0f;
 			source.volume = volume;
