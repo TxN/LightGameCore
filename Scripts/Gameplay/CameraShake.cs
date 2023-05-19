@@ -26,6 +26,7 @@ namespace SMGCore {
 			}
 		}
 
+		[ContextMenu("Shake test")]
 		void ShakeCamera() {
 			startAmount = shakeAmount;
 			startDuration = shakeDuration;
@@ -47,7 +48,13 @@ namespace SMGCore {
 			}
 		}
 
+		public void Stop() {
+			isRunning = false;
+			StopAllCoroutines();
+		}
+
 		public void Decay() {
+			transform.localRotation = Quaternion.identity;//Set the local rotation to 0 when done, just to get rid of any fudging stuff.
 			decay = true;
 		}
 
