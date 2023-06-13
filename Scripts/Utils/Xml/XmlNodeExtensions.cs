@@ -109,6 +109,18 @@ namespace SMGCore.Utils.Xml {
 			return node.TryGetAttrValue(name, out string result) ? result : def;
 		}
 
+		public static T GetEnumAttrValue<T>(this XmlNode node, string name, T def) where T : struct, Enum {
+			if ( node.TryGetAttrValue(name, out string str) ) {
+				if ( Enum.TryParse(str, true, out T result) ) {
+					return result;
+				} else {
+					return def;
+				}
+			} else {
+				return def;
+			}
+		}
+
 		public static List<int> LoadNodeList(this XmlNode node, string name, string attrName, int attrDef) {
 			var result = new List<int>();
 			foreach ( XmlNode childNode in node.ChildNodes ) {
