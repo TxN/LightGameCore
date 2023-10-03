@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 
 namespace SMGCore.Utils {
 	public static class ReflectionUtility {
@@ -31,6 +32,25 @@ namespace SMGCore.Utils {
 				return;
 			}
 			propertyInfo.SetValue(obj, value);
+		}
+
+		public static object CallMethod(object sourceObject, string methodName, params object[] args) {
+			Type type = sourceObject.GetType();
+			MethodInfo method = type.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance);
+
+			if ( method != null ) {
+				try {
+					object result = method.Invoke(sourceObject, args);
+					return result;
+				} catch ( Exception ex ) {
+					UnityEngine.Debug.LogException( ex );
+					return null;
+				}
+			} else {
+				// Method with the specified name not found
+				UnityEngine.Debug.LogWarning($"ReflectionUtility.CallMethod: Method '{methodName}' not found.");
+				return null;
+			}
 		}
 	}
 }
