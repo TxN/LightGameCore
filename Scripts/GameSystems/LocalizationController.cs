@@ -32,6 +32,10 @@ namespace SMGCore {
 			return Instance.TranslateFormat(id, args);
 		}
 
+		public static bool CanTrans(string id) {
+			return Instance.CanTranslate(id);
+		}
+
 		public SystemLanguage CurrentLanguage {
 			get {
 				var val = PlayerPrefs.GetString("Locale");
@@ -61,6 +65,13 @@ namespace SMGCore {
 			}
 
 			return string.IsNullOrEmpty(result.Text) ? string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1)) : result.Text;
+		}
+
+		public bool CanTranslate(string id) {
+			if ( string.IsNullOrEmpty(id) ) {
+				return false;
+			}
+			return _currentLocale.ContainsKey(id);
 		}
 
 		public string TranslateFormat(string id, params string[] args) {
