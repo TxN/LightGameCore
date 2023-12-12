@@ -5,11 +5,11 @@ using DG.Tweening;
 
 namespace SMGCore {
 	public static class TweenHelper {
-		public static Sequence ResetSequence(Sequence seq, bool complete = true) {
+		public static Sequence ResetSequence(Sequence seq, bool complete = true, bool withCallbacks = false) {
 			if ( seq != null ) {
 				seq.SetAutoKill(false);
 				if ( complete ) {
-					seq.Complete();
+					seq.Complete(withCallbacks);
 				}
 				seq.Kill();
 				seq = null;
@@ -17,8 +17,8 @@ namespace SMGCore {
 			return seq;
 		}
 
-		public static Sequence ReplaceSequence(Sequence seq, bool complete = true) {
-			ResetSequence(seq, complete);
+		public static Sequence ReplaceSequence(Sequence seq, bool complete = true, bool withCallbacks = false) {
+			ResetSequence(seq, complete, withCallbacks);
 			return DOTween.Sequence();
 		}
 
