@@ -23,6 +23,17 @@ namespace SMGCore.Utils {
 			return Activator.CreateInstance(type);
 		}
 
+		public static T GetPropertyValue<T>(object obj, string propertyName) {
+			if ( obj == null || string.IsNullOrEmpty(propertyName) ) {
+				return default;
+			}
+			var propertyInfo = obj.GetType().GetProperty(propertyName);
+			if ( propertyInfo == null ) {
+				return default;
+			}
+			return (T)propertyInfo.GetValue(obj);
+		}
+
 		public static void SetPropertyValue(object obj, string propertyName, object value) {
 			if ( obj == null || string.IsNullOrEmpty(propertyName) ) {
 				return;
@@ -32,6 +43,17 @@ namespace SMGCore.Utils {
 				return;
 			}
 			propertyInfo.SetValue(obj, value);
+		}
+
+		public static object GetFieldValue(object obj, string fieldName) {
+			if ( obj == null || string.IsNullOrEmpty(fieldName) ) {
+				return null;
+			}
+			var fieldInfo = obj.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic );
+			if ( fieldInfo == null ) {
+				return null;
+			}
+			return fieldInfo.GetValue(obj);
 		}
 
 		public static object CallMethod(object sourceObject, string methodName, params object[] args) {
