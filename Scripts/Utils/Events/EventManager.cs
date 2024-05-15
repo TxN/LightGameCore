@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 #if UNITY_2017_3_OR_NEWER
 using UnityEngine;
 #endif
@@ -22,6 +26,25 @@ namespace SMGCore.EventSys {
 				return _instance;
 			}
 		}
+
+		public EventManager() {
+#if UNITY_EDITOR
+			EditorApplication.playModeStateChanged += OnPlaymodeChanged;
+#endif
+		}
+
+#if UNITY_EDITOR
+		void OnPlaymodeChanged(PlayModeStateChange e) {
+			if ( e == PlayModeStateChange.EnteredEditMode ) {
+				EditorApplication.playModeStateChanged -= OnPlaymodeChanged;
+				if ( _instance != null ) {
+					CleanUp();
+				}
+				_instance = null;
+				//Debug.Log("Clear EventManager instance");
+			}
+		}
+#endif
 
 		public ConcurrentDictionary<Type, HandlerBase> Handlers {
 			get {
