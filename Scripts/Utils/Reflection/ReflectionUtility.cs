@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
@@ -6,6 +8,7 @@ namespace SMGCore.Utils {
 	public static class ReflectionUtility {
 
 		static Type[] _cachedTypes;
+		static Dictionary<Type, ConstructorInfo[]> _constructorCache;
 
 		public static Type[] GetAllTypes() {
 			if ( _cachedTypes == null ) {
@@ -21,6 +24,48 @@ namespace SMGCore.Utils {
 
 		public static object CreateObjectWithActivator(Type type) {
 			return Activator.CreateInstance(type);
+		}
+
+		/// <summary>
+		/// Для создания объекта, у которого нет конструктора без параметров
+		/// Внимание! Созданные таким образом объекты могут быть некорректно инициализированы, это стоит учитывать.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		public static object CreateWithDefaultParameters(Type type) {
+			if ( type == null ) {
+				return null;
+			}
+			var c = GetConstructors(type);
+			if ( c == null || c.Length == 0 ) {
+				return null;
+			}
+			var cn = c[0].GetParameters();
+			var args = new object[cn.Length];
+			var result = c[0].Invoke(args);
+			return result;
+		}
+
+		public static ConstructorInfo[] GetConstructors(Type type) {
+			if ( _constructorCache == null ) {
+				_constructorCache = new Dictionary<Type, ConstructorInfo[]>();
+			}
+			if ( type == null ) {
+				return null;
+			}
+			if ( _constructorCache.ContainsKey( type ) ) {
+				return _constructorCache[ type ];
+			}
+			var c = type.GetConstructors();
+			_constructorCache[ type ] = c;
+			return c;
+		}
+
+		public static object GetPropertyValue(object obj, PropertyInfo propertyInfo ) {
+			if ( obj == null || propertyInfo == null ) {
+				return default;
+			}
+			return propertyInfo.GetValue(obj);
 		}
 
 		public static T GetPropertyValue<T>(object obj, string propertyName) {
@@ -42,7 +87,14 @@ namespace SMGCore.Utils {
 			if ( propertyInfo == null ) {
 				return;
 			}
-			propertyInfo.SetValue(obj, value);
+			propertyInfo.SetValue(obj, value, BindingFlags.Default, null, null, CultureInfo.InvariantCulture);
+		}
+
+		public static void SetPropertyValue(PropertyInfo propInfo, object obj, object value) {
+			if ( obj == null || propInfo == null ) {
+				return;
+			}
+			propInfo.SetValue(obj, value, BindingFlags.Default, null, null, CultureInfo.InvariantCulture);
 		}
 
 		public static object GetFieldValue(object obj, string fieldName) {
