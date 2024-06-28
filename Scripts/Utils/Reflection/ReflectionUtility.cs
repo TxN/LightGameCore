@@ -9,16 +9,82 @@ namespace SMGCore.Utils {
 
 		static Type[] _cachedTypes;
 		static Dictionary<Type, ConstructorInfo[]> _constructorCache;
+		static Dictionary<string, Type> _typeByFullName;
+		static Dictionary<Type,Type[]> _subclassCache;
 
 		public static Type[] GetAllTypes() {
 			if ( _cachedTypes == null ) {
 				_cachedTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).ToArray();
+				_subclassCache = null;
 			}
 			return _cachedTypes;
 		}
 
+		public static Dictionary<string, Type> GetTypeCache() {
+			if ( _typeByFullName != null ) {
+				return _typeByFullName;
+			}
+			var types = GetAllTypes();
+			foreach ( var t in types ) {
+				var name = t.FullName;
+#if UNITY_EDITOR
+				if ( _typeByFullName.ContainsKey(name) ) {
+					UnityEngine.Debug.LogError($"ReflectionUtility: duplicate types found: {t.FullName}");
+				}
+#endif
+				_typeByFullName.Add(name, t);
+			}
+			return _typeByFullName;
+		}
+
+		public static Type GetTypeByFullName(string name) {
+			if ( string.IsNullOrEmpty(name) ) {
+				return null;
+			}
+			var types = GetTypeCache();
+			if ( types.ContainsKey(name) ) {
+				return types[name];
+			}
+			return null;
+		}
+
+		public static Type GetSubclassType(Type baseClass, string subclassName) {
+			if ( baseClass == null || string.IsNullOrEmpty(subclassName) ) {
+				return null;
+			}
+			var subclasses = GetSubclasses(baseClass);
+			if ( subclasses == null || subclasses.Length == 0 ) {
+				return null;
+			}
+			foreach ( var sc in subclasses ) {
+				if ( sc.Name == subclassName || sc.FullName == subclassName ) {
+					return sc;
+				}
+			}
+			return null;
+		}
+
+		public static object CreateSubclass(Type baseClass, string subclassName) {
+			var scType = GetSubclassType(baseClass, subclassName);
+			if ( scType == null ) {
+				return null;
+			}
+			return CreateObjectWithActivator(scType);
+		}
+
 		public static Type[] GetSubclasses(Type type) {
+			if ( type == null ) {
+				return null;
+			}
+			if ( _subclassCache == null ) {
+				_subclassCache = new Dictionary<Type, Type[]>();
+			}
+			if ( _subclassCache.ContainsKey(type) ) {
+				return _subclassCache[type];
+			}
+
 			var types = GetAllTypes().Where(p => p.IsSubclassOf(type)).ToArray();
+			_subclassCache.Add(type, types);
 			return types;
 		}
 
@@ -44,6 +110,32 @@ namespace SMGCore.Utils {
 			var args = new object[cn.Length];
 			var result = c[0].Invoke(args);
 			return result;
+		}
+
+		public static object CreateSubclassWithParametrizedConstructor(Type baseType, string subclassName, object[] constructorParams) {
+			if ( baseType == null || string.IsNullOrEmpty(subclassName) ) {
+				return null;
+			}
+			var sc = GetSubclassType(baseType, subclassName);
+			if ( sc == null ) {
+				return null;
+			}
+			return CreateWithParametrizedConstructor(sc, constructorParams);
+		}
+
+		public static object CreateWithParametrizedConstructor(Type type, object[] parameters) {
+			if ( type == null ) {
+				return null;
+			}
+			var types = new Type[parameters.Length];
+			for ( int i = 0; i< parameters.Length; i++ ) {
+				types[i] = parameters[i].GetType();
+			}
+			var c = type.GetConstructor(types);
+			if ( c == null ) {
+				return null;
+			}
+			return c.Invoke(parameters);
 		}
 
 		public static ConstructorInfo[] GetConstructors(Type type) {
