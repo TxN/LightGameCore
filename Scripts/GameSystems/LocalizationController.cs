@@ -20,6 +20,8 @@ namespace SMGCore {
 		SystemLanguage.Russian,
 	};
 
+		public static bool LocaleLoadFailed { get; private set; }
+
 		public static SystemLanguage FixLanguage(SystemLanguage lang) {
 			return SupportedLanguages.Contains(lang) ? lang : DefaultLanguage;
 		}
@@ -54,6 +56,10 @@ namespace SMGCore {
 
 		protected override void Awake() {
 			base.Awake();
+			if ( _instance != this ) {
+				Debug.LogWarning($"Singleton {GetType().Name}, duplicate instance found");
+				return;
+			}
 			Load();
 			DontDestroyOnLoad(gameObject);
 		}
@@ -103,10 +109,20 @@ namespace SMGCore {
 			}
 			var loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
 			if ( loc == null ) {
-				Debug.LogWarningFormat("LocalizationController: Cannnot load locale {0}", CurrentLanguage);
-				loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, DefaultLanguage));
+				
+				//Пробуем второй раз загрузить локаль (по какой-то неведомой причине, иногда с первого раза локали могут не подтянуться)
+				loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+				if ( loc == null ) {
+					//Пробуем на худой конец подтянуть резервную
+					loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, DefaultLanguage));
+					Debug.LogWarningFormat("LocalizationController: Cannnot load locale {0}", CurrentLanguage);
+					LocaleLoadFailed = true;
+				} else {
+					Debug.LogWarningFormat("LocalizationController: Locale {0} loaded after second attempt", CurrentLanguage);
+				}				
 			}
 			if ( loc == null ) {
+				LocaleLoadFailed = true;
 				Debug.LogError("LocalizationController: Cannnot load default locale.");
 				return;
 			}
@@ -116,6 +132,7 @@ namespace SMGCore {
 				LoadTranslationNode(item, string.Empty, _currentLocale);
 			}
 			Debug.LogFormat("Locale load finished. Loaded {0} elements.", _currentLocale.Count);
+			LocaleLoadFailed = false;
 		}
 
 		static void LoadTranslationNode(XmlNode node, string prefix, IDictionary<string, TranslationNode> dict) {
