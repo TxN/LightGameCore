@@ -59,9 +59,14 @@ namespace SMGCore.EventSys {
 		}
 
 		public static void Unsubscribe<T>(Action<T> action) where T : struct {
-			if (_instance != null) {
+			if ( _instance != null ) {
 				Instance.Unsub(action);
 			}
+		}
+
+		public static void Fire<T>() where T : struct {
+			var emptyStruct = new T();
+			Instance.FireEvent(emptyStruct);
 		}
 
 		public static void Fire<T>(T args) where T : struct {
