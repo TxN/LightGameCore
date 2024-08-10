@@ -1,16 +1,20 @@
 {
     "name": "SMGCore",
+    "rootNamespace": "",
     "references": [
         "Unity.TextMeshPro",
         "DOTween.Modules"
     ],
-    "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
-    "precompiledReferences": [],
+    "precompiledReferences": [
+        "DOTween.dll",
+        "UnsafeMethods.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": []
+    "versionDefines": [],
+    "noEngineReferences": false
 }

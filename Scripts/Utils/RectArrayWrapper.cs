@@ -36,16 +36,28 @@ namespace Utils {
 
 		public T this[int x, int y] {
 			get {
-				return Data[_x * y + x];
+				return _data[_x * y + x];
 			}
 			set {
 				//встроенная защита от записи за границу массива
-				if ( x >= _x || y >= _y || x < 0 || y < 0 ) {
+				if ( x >= _x || x < 0 || y >= _y  || y < 0 ) {
 					return;
 				}
 
-				Data[_x * y + x] = value;
+				_data[_x * y + x] = value;
 			}
+		}
+
+		/// <summary>
+		/// Без проверки на выход за границы массива
+		/// Фактически, экономия на спичках, так как не выполняющаяся проверка почти ничего не ест всё равно
+		/// </summary>
+		public void SetUnsafe(int x, int y, T value) {
+			_data[_x * y + x] = value;
+		}
+
+		public void SetAll(byte value) {
+			//UnsafeMethods.UnsafeMethods.InitBlock(&_data[0], value, (uint)_data.Length);
 		}
 	}
 }
