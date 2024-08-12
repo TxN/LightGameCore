@@ -20,6 +20,29 @@ namespace SMGCore.Utils {
 			return _cachedTypes;
 		}
 
+		public static Type[] GetAllTypesNonCached(List<string> assemblyNames = null) {
+			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+			if (
+				(assemblyNames == null) || (assemblyNames.Count == 0) ||
+				((assemblyNames.Count == 1) && (assemblyNames[0] == "Assembly-CSharp")) ) {
+				return assemblies.SelectMany(a => a.GetTypes()).ToArray();
+			}
+
+			var set = new HashSet<string>();
+			foreach ( var assemblyName in assemblyNames ) {
+				set.Add(assemblyName);
+			}
+
+			var selectedAssemblies = new List<Assembly>(assemblyNames.Count);
+			foreach ( var asm in assemblies ) {
+				if ( set.Contains(asm.GetName().Name) ) {
+					selectedAssemblies.Add(asm);
+				}
+			}
+			return selectedAssemblies.SelectMany(s => s.GetTypes()).ToArray();
+		}
+
 		public static Dictionary<string, Type> GetTypeCache() {
 			if ( _typeByFullName != null ) {
 				return _typeByFullName;
