@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.IO;
 using System.Collections.Generic;
 
@@ -152,3 +153,4 @@ namespace {0} {{
 		}
 	}
 }
+#endif
