@@ -15,6 +15,15 @@ namespace SMGCore {
 			}
 		}
 
+		public static T WeakInstance {
+			get {
+				if ( !_instance ) {
+					return null;
+				}
+				return _instance;
+			}
+		}
+
 		public static bool IsAlive { get { return _instance; } }
 
 		protected static T _instance = null;
