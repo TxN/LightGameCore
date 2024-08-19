@@ -15,6 +15,9 @@ namespace Utils {
 		readonly HashSet<WeakReference<BaseEventBus>> _toRemove = new HashSet<WeakReference<BaseEventBus>>();
 
 		float _lastCleanupTime;
+		int _mainThreadID;
+
+		bool IsMainThread => _mainThreadID == System.Threading.Thread.CurrentThread.ManagedThreadId;
 
 		void Update() {
 			TryCleanUp();
@@ -30,7 +33,25 @@ namespace Utils {
 					return;
 				}
 			}
+#if UNITY_EDITOR
+			if ( !IsMainThread ) {
+				Debug.LogWarning("Eventbus is not on main thread. This is unsupported and may cause issues.");
+			}
+#endif
 			EventBuses.Add(new WeakReference<BaseEventBus>(addEventBus));
+		}
+
+		protected override void Awake() {
+			_mainThreadID = System.Threading.Thread.CurrentThread.ManagedThreadId;
+			base.Awake();
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private void OnDestroy() {
+			if ( _instance == this ) {
+				_instance = null;
+			}
+			SceneManager.sceneLoaded -= OnSceneLoaded;
 		}
 
 		public void TryUnregister(BaseEventBus eventBus) {
@@ -40,13 +61,7 @@ namespace Utils {
 					break;
 				}
 			}
-		}
-
-		protected override void Awake() {
-			base.Awake();
-			SceneManager.sceneLoaded += OnSceneLoaded;
-		}
-			
+		}	
 
 		void OnSceneLoaded(Scene scene, LoadSceneMode mode) =>	CheckEventBusesOnLoad();
 
@@ -73,6 +88,11 @@ namespace Utils {
 			}
 			var removed = EventBuses.RemoveAll(x => _toRemove.Contains(x));
 			_toRemove.Clear();
+#if UNITY_EDITOR
+			if ( !IsMainThread ) {
+				Debug.LogWarning("Eventbus is not on main thread. This is unsupported and may cause issues.");
+			}
+#endif
 		}
 	}
 }

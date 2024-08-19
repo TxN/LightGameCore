@@ -9,7 +9,7 @@ namespace SMGCore {
 				}
 				if ( !_instance ) {
 					var obj = new GameObject(typeof(T).ToString());
-					obj.AddComponent<T>();
+					_instance = obj.AddComponent<T>();
 				}
 				return _instance;
 			}
