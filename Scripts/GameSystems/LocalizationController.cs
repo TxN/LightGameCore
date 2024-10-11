@@ -73,6 +73,18 @@ namespace SMGCore {
 			return string.IsNullOrEmpty(result.Text) ? string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1)) : result.Text;
 		}
 
+		public List<string> GetChildIds(string startsWith) {
+			var list = new List<string>();
+
+			foreach ( var kv in _currentLocale ) {
+				if ( kv.Key.StartsWith(startsWith) ) {
+					list.Add(kv.Key);
+				}
+			}
+
+			return list;
+		}
+
 		public bool CanTranslate(string id) {
 			if ( string.IsNullOrEmpty(id) ) {
 				return false;
