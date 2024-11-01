@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 
 namespace SMGCore.Parser {
@@ -7,7 +8,7 @@ namespace SMGCore.Parser {
 
 		public override string SerializeValue(object value, string format) {
 			var cast = (Vector2Int)value;
-			return $"{cast.x}, {cast.y}";
+			return $"{cast.x.ToString(CultureInfo.InvariantCulture)}, {cast.y.ToString(CultureInfo.InvariantCulture)}";
 		}
 	}
 }

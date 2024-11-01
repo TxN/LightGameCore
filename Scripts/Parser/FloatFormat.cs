@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace SMGCore.Parser {
 	public static class FloatFormat {
-		const int DefaultRound = 2;
+		const int DefaultRound = 4;
 
 		public static float ParseValue(string value, string format) {
 			if ( string.IsNullOrEmpty(value) ) {
