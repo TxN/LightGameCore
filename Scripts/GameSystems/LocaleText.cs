@@ -10,6 +10,8 @@ namespace SMGCore {
 	public sealed class LocaleText : MonoBehaviour {
 		public string Id = string.Empty;
 
+		public SystemLanguage EditorLanguage = SystemLanguage.Russian;
+
 		TMP_Text _tmpComponent = null;
 		Text _textComponent = null;
 
@@ -55,6 +57,42 @@ namespace SMGCore {
 				}
 			} else {
 				UpdateText();
+			}
+		}
+
+#if ODIN_INSPECTOR
+		[Sirenix.OdinInspector.Button]
+#endif
+		public void UpdateValueInCurrentLocFile() {
+			if ( string.IsNullOrEmpty(Id) ) {
+				return;
+			}
+			string newText = null;
+			if ( GetComponent<TMP_Text>() ) {
+				newText = GetComponent<TMP_Text>().text;
+			} else if ( GetComponent<Text>() ) {
+				newText = GetComponent<Text>().text;
+			}
+			if ( newText == null ) {
+				return;
+			}
+			LocalizationController.UpdateEntry(Id, newText, EditorLanguage, true);
+			Debug.Log("Updated");
+		}
+
+#if ODIN_INSPECTOR
+		[Sirenix.OdinInspector.Button]
+#endif
+		public void LoadValueFromLocFile() {
+			var text = LocalizationController.GetEntryFromFile(Id, EditorLanguage);
+			if ( string.IsNullOrEmpty(text) ) {
+				return;
+			}
+			if ( GetComponent<TMP_Text>() ) {
+				GetComponent<TMP_Text>().text = text;
+			}
+			if ( GetComponent<Text>() ) {
+				GetComponent<Text>().text = text;
 			}
 		}
 	}

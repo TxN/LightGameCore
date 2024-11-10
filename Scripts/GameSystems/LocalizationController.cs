@@ -175,6 +175,74 @@ namespace SMGCore {
 			};
 			return n;
 		}
+
+		public static void CreateNewLocaleEntry(string path, string value, XmlDocument loc) {
+			if ( !path.StartsWith("root.") ) {
+				path = "root." + path;
+			}
+			Debug.Log($"Create {path}");
+			var dotIndex = path.LastIndexOf('.');
+			if ( dotIndex == -1 ) {
+				return;
+			}
+			var parentNodeName = path.Substring( 0, dotIndex );
+			var childNodeName = path.Substring( dotIndex + 1 );
+			var parent = loc.SelectSingleNode(parentNodeName.Replace('.', '/'));
+			if ( parent == null ) {
+				Debug.LogError($"LocalizationController.CreateNewLocaleEntry: cannot find parent node for path '{path}'");
+				return;
+			}
+			var el = loc.CreateElement(childNodeName);
+			el.AddAttrValue("text", value);
+			parent.AppendChild(el);
+		}
+
+		public static void UpdateEntry(string path, string newValue, SystemLanguage language, bool create = false) {
+			var filePath = string.Format(LocFileFormatPath, language);
+			var loc = XmlUtils.LoadXmlDocumentFromAssets(filePath);
+			if ( loc == null ) {
+				Debug.LogError($"LocalizationController.UpdateEntry: Cannot load locale file for {language}");
+				return;
+			}
+			var node = loc.SelectSingleNode("root/" + path.Replace('.', '/'));
+			if ( node == null ) {
+				if ( create ) {
+					CreateNewLocaleEntry(path, newValue, loc);
+#if UNITY_EDITOR
+					loc.Save("Assets/Resources/" + filePath + ".xml");
+					UnityEditor.AssetDatabase.Refresh();
+#endif
+					return;
+				}
+				Debug.LogError($"LocalizationController.UpdateEntry: Cannot find node with path {path} in locale {language}");
+				return;
+			}
+			var attr = node.Attributes["text"];
+			if ( attr == null ) {
+				Debug.LogError($"LocalizationController.UpdateEntry: Cannot find text attribute in node with path {path} in locale {language}");
+				return;
+			}
+			attr.Value = newValue;
+#if UNITY_EDITOR
+			loc.Save("Assets/Resources/" + filePath + ".xml");
+			UnityEditor.AssetDatabase.Refresh();
+#endif
+		}
+
+		public static string GetEntryFromFile( string path, SystemLanguage language) {
+			var filePath = string.Format(LocFileFormatPath, language);
+			var loc = XmlUtils.LoadXmlDocumentFromAssets(filePath);
+			if ( loc == null ) {
+				Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot load locale file for {language}");
+				return "!!!";
+			}
+			var node = loc.SelectSingleNode("root/" + path.Replace('.', '/'));
+			if ( node == null ) {
+				Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot find node with path {path} in locale {language}");
+				return "!!!";
+			}
+			return node.GetAttrValue("text", "!!!");
+		}
 	}
 
 	public sealed class TranslationNode {
