@@ -14,6 +14,9 @@ namespace SMGCore {
 			}
 		}
 
+		/// <summary>
+		/// Instance без попытки поиска синглтона на сцене. Полезно, если есть ожидаемая вероятность того, что синглтона не существует.
+		/// </summary>
 		public static T WeakInstance {
 			get {
 				if ( !_instance ) {
