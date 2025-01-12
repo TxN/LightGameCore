@@ -1,3 +1,4 @@
+#if UNITY_2017_1_OR_NEWER
 namespace SMGCore {
 	public sealed class ScenePersistence : MonoSingleton<ScenePersistence> {
 		public PersistentDataHolder Data { get; private set; } = null;
@@ -19,3 +20,4 @@ namespace SMGCore {
 		}
 	}
 }
+#endif

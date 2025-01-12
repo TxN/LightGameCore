@@ -1,3 +1,4 @@
+#if UNITY_2017_1_OR_NEWER
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -34,3 +35,4 @@ namespace SMGCore.Editor {
 		}
 	}
 }
+#endif

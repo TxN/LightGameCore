@@ -1,3 +1,4 @@
+#if UNITY_2017_1_OR_NEWER
 using System.Collections.Generic;
 using System.Xml;
 
@@ -254,3 +255,4 @@ namespace SMGCore {
 
 	public struct Event_LanguageChanged { public SystemLanguage Language; }
 }
+#endif

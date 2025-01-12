@@ -1,3 +1,4 @@
+#if UNITY_2017_1_OR_NEWER
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -37,3 +38,4 @@ namespace SMGCore {
 		}
 	}
 }
+#endif

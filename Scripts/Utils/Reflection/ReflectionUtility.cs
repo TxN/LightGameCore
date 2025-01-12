@@ -232,12 +232,18 @@ namespace SMGCore.Utils {
 					object result = method.Invoke(sourceObject, args);
 					return result;
 				} catch ( Exception ex ) {
+#if UNITY_2017_1_OR_NEWER
 					UnityEngine.Debug.LogException( ex );
+#else
+					System.Console.WriteLine( ex.ToString() );
+#endif
 					return null;
 				}
 			} else {
 				// Method with the specified name not found
+#if UNITY_2017_1_OR_NEWER
 				UnityEngine.Debug.LogWarning($"ReflectionUtility.CallMethod: Method '{methodName}' not found.");
+#endif
 				return null;
 			}
 		}

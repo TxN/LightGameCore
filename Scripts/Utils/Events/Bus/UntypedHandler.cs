@@ -15,7 +15,9 @@ namespace Utils {
 				_actions.Add(action);
 				Watchers.Add(watcher);
 			} else if ( LogsEnabled ) {
+#if UNITY_2017_1_OR_NEWER
 				Debug.LogWarning($"Handler: {watcher} tries to subscribe to {action} again.");
+#endif
 			}
 		}
 
@@ -26,7 +28,9 @@ namespace Utils {
 			var index = _actions.IndexOf(action);
 			SafeUnsubscribe(index);
 			if ( (index < 0) && LogsEnabled ) {
+#if UNITY_2017_1_OR_NEWER
 				Debug.LogWarning($"Handler: Trying to unsubscribe action {action} without watcher.");
+#endif
 			}
 		}
 
@@ -59,12 +63,18 @@ namespace Utils {
 				try {
 					current.Invoke();
 				} catch ( Exception e ) {
+#if UNITY_2017_1_OR_NEWER
 					Debug.LogException(e);
+#else
+					Console.WriteLine( e.ToString() );
+#endif
 				}
 			}
 			CleanUp();
 			if ( AllFireLogs ) {
+#if UNITY_2017_1_OR_NEWER
 				Debug.Log($"[{nameof(UntypedHandler)}] fired (Listeners: { Watchers.Count})");
+#endif
 			}
 		}
 
@@ -80,18 +90,22 @@ namespace Utils {
 			var count = 0;
 			for ( var i = 0; i < Watchers.Count; i++ ) {
 				var watcher = Watchers[i];
+#if UNITY_2017_1_OR_NEWER
 				if ( watcher is MonoBehaviour comp ) {
 					if ( !comp ) {
 						SafeUnsubscribe(i);
 						count++;
 					}
 				}
+#endif
 			}
 			if ( count > 0 ) {
 				CleanUp();
 			}
 			if ( (count > 0) && LogsEnabled ) {
+#if UNITY_2017_1_OR_NEWER
 				Debug.LogError($"{count} destroyed scripts subscribed to event {typeof(UntypedHandler)}.");
+#endif
 			}
 			return (count == 0);
 		}

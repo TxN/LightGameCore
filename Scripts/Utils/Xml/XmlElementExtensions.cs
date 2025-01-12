@@ -1,7 +1,5 @@
 using System.Xml;
 
-using UnityEngine;
-
 namespace SMGCore.Utils.Xml {
 	public static class XmlElementExtensions {
 	
@@ -34,9 +32,10 @@ namespace SMGCore.Utils.Xml {
 		public static void AddAttrValue(this XmlElement elem, string name, float value) {
 			elem.AddAttrValue(name, value.ToString());
 		}
-		
-		public static void AddAttrValue(this XmlElement elem, string name, SystemLanguage value) {
+#if UNITY_2017_1_OR_NEWER
+		public static void AddAttrValue(this XmlElement elem, string name, UnityEngine.SystemLanguage value) {
 			elem.AddAttrValue(name, value.ToString());
 		}
+#endif
 	}
 }

@@ -94,12 +94,14 @@ namespace SMGCore.EventSys {
 			var count = 0;
 			for ( var i = 0; i < Watchers.Count; i++ ) {
 				var watcher = Watchers[i];
+#if UNITY_2017_3_OR_NEWER
 				if ( watcher is MonoBehaviour behaviour ) {
 					if ( !behaviour ) {
 						SafeUnsubscribe(i);
 						count++;
 					}
 				}
+#endif
 			}
 			if ( count > 0 ) {
 				CleanUp();

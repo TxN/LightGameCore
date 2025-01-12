@@ -17,7 +17,8 @@ namespace SMGCore.Utils.Xml {
 			var readerSettings = new XmlReaderSettings { IgnoreComments = true };
 			return XmlReader.Create(new StringReader(text), readerSettings);
 		}
-		
+
+		#if UNITY_2017_1_OR_NEWER
 		[CanBeNull]
 		public static XmlDocument LoadXmlDocumentFromAssets(string filename) {
 			var xmlAsset = Resources.Load<TextAsset>(filename);
@@ -25,6 +26,7 @@ namespace SMGCore.Utils.Xml {
 				? LoadXmlDocumentFromText(xmlAsset.text)
 				: null;
 		}
+		#endif
 		
 		[CanBeNull]
 		static XmlDocument TextToXmlDocument(string text) {
@@ -35,7 +37,9 @@ namespace SMGCore.Utils.Xml {
 					return xmldoc;
 				}
 			} catch ( Exception e ) {
+#if UNITY_2017_1_OR_NEWER
 				Debug.LogWarningFormat("TextToXmlDocument: exception: {0}", e);
+#endif
 				return null;
 			}
 		}

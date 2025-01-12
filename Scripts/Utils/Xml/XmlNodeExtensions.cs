@@ -305,11 +305,12 @@ namespace SMGCore.Utils.Xml {
 			}
 			throw new InvalidOperationException(string.Format("GetNotEmptyStringAttr: string attribute wrong({0})", name));
 		}
-		
+#if UNITY_2017_1_OR_NEWER
 		public static Vector2 CreateVectorFromNode(this XmlNode node) {
 			float x = node.GetAttrValue("x", 0);
 			float y = node.GetAttrValue("y", 0);
 			return new Vector2(x, y);
 		}
+#endif
 	}
 }
