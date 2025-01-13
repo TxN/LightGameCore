@@ -98,6 +98,9 @@ namespace Utils {
 	}
 }
 #else
+using System;
+using System.Collections.Generic;
+
 namespace Utils {
 	public sealed class EventBusManager {
 		const float CleanUpInterval = 5f;
