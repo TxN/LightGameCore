@@ -178,24 +178,46 @@ namespace SMGCore {
 		}
 
 		public static void CreateNewLocaleEntry(string path, string value, XmlDocument loc) {
-			if ( !path.StartsWith("root.") ) {
+			if (string.IsNullOrEmpty(path) || loc == null) {
+				Debug.LogError("LocalizationController.CreateNewLocaleEntry: path or document is null");
+				return;
+			}
+
+			if (!path.StartsWith("root.")) {
 				path = "root." + path;
 			}
-			Debug.Log($"Create {path}");
-			var dotIndex = path.LastIndexOf('.');
-			if ( dotIndex == -1 ) {
-				return;
+
+			// Проверяем, существует ли уже такая нода
+			var existingNode = loc.SelectSingleNode(path.Replace('.', '/'));
+			if (existingNode != null) {
+				Debug.LogWarning($"LocalizationController.CreateNewLocaleEntry: node {path} already exists, updating value");
+				var attr = existingNode.Attributes["text"];
+				if (attr != null) {
+					attr.Value = value;
+					return;
+				}
 			}
-			var parentNodeName = path.Substring( 0, dotIndex );
-			var childNodeName = path.Substring( dotIndex + 1 );
-			var parent = loc.SelectSingleNode(parentNodeName.Replace('.', '/'));
-			if ( parent == null ) {
-				Debug.LogError($"LocalizationController.CreateNewLocaleEntry: cannot find parent node for path '{path}'");
-				return;
+
+			var pathParts = path.Split('.');
+			XmlNode currentNode = loc.DocumentElement; // root node
+
+			// Создаем все отсутствующие родительские ноды
+			for (int i = 1; i < pathParts.Length - 1; i++) {
+				var nextNode = currentNode.SelectSingleNode(pathParts[i]);
+				if (nextNode == null) {
+					nextNode = loc.CreateElement(pathParts[i]);
+					currentNode.AppendChild(nextNode);
+				}
+				currentNode = nextNode;
 			}
-			var el = loc.CreateElement(childNodeName);
-			el.AddAttrValue("text", value);
-			parent.AppendChild(el);
+
+			// Создаем конечную ноду
+			var nodeName = pathParts[pathParts.Length - 1];
+			var element = loc.CreateElement(nodeName);
+			var textAttr = loc.CreateAttribute("text");
+			textAttr.Value = value;
+			element.Attributes.Append(textAttr);
+			currentNode.AppendChild(element);
 		}
 
 		public static void UpdateEntry(string path, string newValue, SystemLanguage language, bool create = false) {
