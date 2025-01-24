@@ -59,6 +59,14 @@ namespace SMGCore {
             }
         }
 
+        public void SetTarget(Transform target) {
+            if ( Target ) {
+                OnDisable();
+            }
+            Target = target;
+            OnEnable();
+        }
+
         void OnEnable() {
             if ( !Target ) {
                 return;
