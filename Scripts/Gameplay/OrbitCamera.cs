@@ -32,6 +32,16 @@ namespace SMGCore {
 		/// </summary>
         public float ZoomSensitivity = 10f;
 
+        /// <summary>
+        /// Enable rotation smoothing
+        /// </summary>
+        public bool UseRotationSmoothing = true;
+
+        /// <summary>
+        /// How fast the camera rotation will be smoothed
+        /// </summary>
+        public float RotationSmoothTime = 0.12f;
+
         private float _currentX = 0f;
         private float _currentY = 0f;
         private bool _isRotating = false;
@@ -46,12 +56,19 @@ namespace SMGCore {
 
         private bool _isAdjustingOffset = false;
 
+        private float _smoothX;
+        private float _smoothY;
+        private float _velocityX;
+        private float _velocityY;
+
         void Start() {
             if (Target != null) {
                 transform.LookAt(Target);
                 var angles = transform.eulerAngles;
                 _currentX = angles.y;
                 _currentY = angles.x;
+                _smoothX = _currentX;
+                _smoothY = _currentY;
                 _targetPosition = Target.position;
                 _lastTargetPosition = Target.position;
                 _noiseOffset = new Vector3(Random.Range(0f, 1000f), Random.Range(0f, 1000f), Random.Range(0f, 1000f));
@@ -191,6 +208,15 @@ namespace SMGCore {
                 }
             }
 
+            // Apply rotation smoothing
+            if (UseRotationSmoothing) {
+                _smoothX = Mathf.SmoothDamp(_smoothX, _currentX, ref _velocityX, RotationSmoothTime);
+                _smoothY = Mathf.SmoothDamp(_smoothY, _currentY, ref _velocityY, RotationSmoothTime);
+            } else {
+                _smoothX = _currentX;
+                _smoothY = _currentY;
+            }
+
             // Update target point offset
             UpdateTargetOffset();
 
@@ -202,7 +228,8 @@ namespace SMGCore {
             // Calculate base camera position and rotation
             Vector3 targetPos = Target.position + _targetPointOffset;
             _targetPosition = Vector3.SmoothDamp(_targetPosition, targetPos, ref _currentVelocity, FollowSmoothFactor);
-            var rotation = Quaternion.Euler(_currentY, _currentX, 0);
+
+            var rotation = Quaternion.Euler(_smoothY, _smoothX, 0);
             var desiredPosition = rotation * new Vector3(0.0f, 0.0f, -Distance) + _targetPosition;
 
             // Check for obstructions and adjust distance
