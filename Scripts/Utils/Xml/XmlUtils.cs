@@ -26,6 +26,24 @@ namespace SMGCore.Utils.Xml {
 				? LoadXmlDocumentFromText(xmlAsset.text)
 				: null;
 		}
+
+		public static XmlDocument LoadXmlDocumentFromStreamingAssets(string filename) {
+			if ( !filename.EndsWith(".xml") ) {
+				filename = filename + ".xml";
+			}
+			var filePath = Path.Combine(Application.streamingAssetsPath, filename);
+			if ( !File.Exists(filePath) ) {
+				Debug.LogWarningFormat("LoadXmlDocumentFromStreamingAssets: File not found at path '{0}'", filePath);
+				return null;
+			}
+			try {
+				var fileContent = File.ReadAllText(filePath);
+				return TextToXmlDocument(fileContent);
+			} catch ( Exception e ) {
+				Debug.LogWarningFormat("LoadXmlDocumentFromStreamingAssets: Failed to read or parse file '{0}'. Exception: {1}", filePath, e);
+				return null;
+			}
+		}
 		#endif
 		
 		[CanBeNull]

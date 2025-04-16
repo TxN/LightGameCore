@@ -6,12 +6,15 @@ using UnityEngine;
 
 using SMGCore.EventSys;
 using SMGCore.Utils.Xml;
+using System.IO;
+using System.Linq;
 
 namespace SMGCore {
 	public sealed class LocalizationController : MonoSingleton<LocalizationController> {
 
 		public const SystemLanguage DefaultLanguage   = SystemLanguage.English;
 		public const string         LocFileFormatPath = "Configs/Locale_{0}";
+		public const string 		StreamingAssetsPath = "Configs/";
 		public const string         EmptyLocString    = "!{0}!";
 
 		Dictionary<string, TranslationNode> _currentLocale = new Dictionary<string, TranslationNode>();
@@ -19,11 +22,19 @@ namespace SMGCore {
 		public static readonly List<SystemLanguage> SupportedLanguages = new List<SystemLanguage> {
 		SystemLanguage.English,
 		SystemLanguage.Russian,
-	};
+		};
+		bool _isInitialized = false;
+
+		Dictionary<string, SystemLanguage> _allLanguages = new Dictionary<string, SystemLanguage>();
+
+		List<SystemLanguage> _streamingAssetsLanguages = new List<SystemLanguage>();
 
 		public static bool LocaleLoadFailed { get; private set; }
 
-		public static SystemLanguage FixLanguage(SystemLanguage lang) {
+		SystemLanguage FixLanguage(SystemLanguage lang) {
+			if ( _streamingAssetsLanguages.Contains(lang) ) {
+				return lang;
+			}
 			return SupportedLanguages.Contains(lang) ? lang : DefaultLanguage;
 		}
 
@@ -41,6 +52,7 @@ namespace SMGCore {
 
 		public SystemLanguage CurrentLanguage {
 			get {
+				Initialize();
 				var val = PlayerPrefs.GetString("Locale");
 				if ( string.IsNullOrEmpty(val) ) {
 					CurrentLanguage = FixLanguage(Application.systemLanguage);
@@ -61,8 +73,51 @@ namespace SMGCore {
 				Debug.LogWarning($"Singleton {GetType().Name}, duplicate instance found");
 				return;
 			}
+			Initialize();
 			Load();
 			DontDestroyOnLoad(gameObject);
+		}
+
+		public void Initialize() {
+			if ( _isInitialized ) {
+				return;
+			}
+			_isInitialized = true;
+			_allLanguages.Clear();
+			foreach ( var lang in System.Enum.GetValues(typeof(SystemLanguage)) ) {
+				if ( !_allLanguages.ContainsKey(lang.ToString()) ) {
+					_allLanguages.Add(lang.ToString(), (SystemLanguage)lang);
+				}
+			}
+			var files = GetAllLanguageFilesFromStreamingAssets();
+			foreach ( var file in files ) {
+				var lang = file.Substring(file.LastIndexOf('_') + 1, file.LastIndexOf('.') - file.LastIndexOf('_') - 1);
+				if ( _allLanguages.ContainsKey(lang) ) {
+					Debug.LogFormat("LocalizationController: Found language file {0}", lang);
+					_streamingAssetsLanguages.Add(_allLanguages[lang]);
+				} else {
+					Debug.LogWarningFormat("LocalizationController: Found language file {0} but it is not supported", lang);
+				}
+			}
+		}
+
+		List<string> GetAllLanguageFilesFromStreamingAssets() {
+			var files = Directory.GetFiles(Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath), "Locale_*.xml", SearchOption.TopDirectoryOnly);
+			return files.ToList();
+		}
+
+		public List<SystemLanguage> GetSupportedLanguages() {
+			Initialize();
+			var result = new List<SystemLanguage>();
+			foreach ( var lang in SupportedLanguages ) {
+				result.Add(lang);
+			}
+			foreach ( var lang in _streamingAssetsLanguages ) {
+				if ( !result.Contains(lang) ) {
+					result.Add(lang);
+				}
+			}
+			return result;
 		}
 
 		public string Translate(string id) {
@@ -115,16 +170,34 @@ namespace SMGCore {
 		}
 
 		void Load() {
+			Initialize();
 			if ( _currentLocale != null ) {
 				_currentLocale.Clear();
 			} else {
 				_currentLocale = new Dictionary<string, TranslationNode>();
 			}
-			var loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
-			if ( loc == null ) {
-				
-				//Пробуем второй раз загрузить локаль (по какой-то неведомой причине, иногда с первого раза локали могут не подтянуться)
+			var hasStreamingAssetsLanguage = _streamingAssetsLanguages.Contains(CurrentLanguage);
+			XmlDocument loc;
+			if ( hasStreamingAssetsLanguage ) {
+				loc = XmlUtils.LoadXmlDocumentFromStreamingAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+			} else {
 				loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+			}
+			
+			if ( loc == null ) {				
+				//Пробуем второй раз загрузить локаль (по какой-то неведомой причине, иногда с первого раза локали могут не подтянуться)
+				if ( hasStreamingAssetsLanguage ) {
+					loc = XmlUtils.LoadXmlDocumentFromStreamingAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+					if ( loc == null ) {
+						Debug.LogErrorFormat("LocalizationController: Cannnot load locale {0} from streaming assets. Trying to fallback to resources", CurrentLanguage);
+						if ( SupportedLanguages.Contains(CurrentLanguage)) {
+							loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+						}
+					}
+				} else {
+					loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+				}
+				
 				if ( loc == null ) {
 					//Пробуем на худой конец подтянуть резервную
 					loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, DefaultLanguage));
