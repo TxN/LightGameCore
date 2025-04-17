@@ -22,6 +22,7 @@ namespace SMGCore {
 		public static readonly List<SystemLanguage> SupportedLanguages = new List<SystemLanguage> {
 		SystemLanguage.English,
 		SystemLanguage.Russian,
+		SystemLanguage.Chinese,
 		};
 		bool _isInitialized = false;
 
@@ -30,6 +31,23 @@ namespace SMGCore {
 		List<SystemLanguage> _streamingAssetsLanguages = new List<SystemLanguage>();
 
 		public static bool LocaleLoadFailed { get; private set; }
+
+		public static bool IsHieroglyphicLanguage(SystemLanguage language) {
+			return language == SystemLanguage.Chinese || language == SystemLanguage.Japanese || language == SystemLanguage.Korean || language == SystemLanguage.ChineseSimplified || language == SystemLanguage.ChineseTraditional;
+		}
+
+		public HashSet<char> GetAllSymbolsFromCurrentLocale() {
+			var symbols = new HashSet<char>();
+			foreach ( var kv in _currentLocale ) {
+				if ( string.IsNullOrEmpty(kv.Value.Text) ) {
+					continue;
+				}
+				foreach ( var c in kv.Value.Text ) {
+					symbols.Add(c);
+				}
+			}
+			return symbols;
+		}
 
 		SystemLanguage FixLanguage(SystemLanguage lang) {
 			if ( _streamingAssetsLanguages.Contains(lang) ) {

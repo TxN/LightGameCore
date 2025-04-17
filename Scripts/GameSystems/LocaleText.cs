@@ -9,6 +9,7 @@ using TMPro;
 namespace SMGCore {
 	[DisallowMultipleComponent]
 	public sealed class LocaleText : MonoBehaviour {
+		const float IncreasedSymbolSpacing = 5f;
 		public string Id = string.Empty;
 
 		public SystemLanguage EditorLanguage = SystemLanguage.Russian;
@@ -16,9 +17,14 @@ namespace SMGCore {
 		TMP_Text _tmpComponent = null;
 		Text _textComponent = null;
 
+		float _defaultSymbolSpacing = 0f;
+
 		void Awake() {
 			_tmpComponent = GetComponent<TMP_Text>();
 			_textComponent = GetComponent<Text>();
+			if ( _tmpComponent ) {
+				_defaultSymbolSpacing = _tmpComponent.characterSpacing;
+			}
 		}
 
 		void Start() {
@@ -39,6 +45,12 @@ namespace SMGCore {
 			if ( string.IsNullOrEmpty(Id) ) {
 				return;
 			}
+			var currentLanguage = LocalizationController.Instance.CurrentLanguage;
+			if ( LocalizationController.IsHieroglyphicLanguage(currentLanguage) ) {
+				_tmpComponent.characterSpacing = Mathf.Max(_defaultSymbolSpacing, IncreasedSymbolSpacing);
+			} else {
+				_tmpComponent.characterSpacing = _defaultSymbolSpacing;
+			}
 			if ( _tmpComponent ) {
 				_tmpComponent.text = LocalizationController.Instance.Translate(Id);
 			}
@@ -52,6 +64,7 @@ namespace SMGCore {
 			if ( string.IsNullOrEmpty(id) ) {
 				if ( _tmpComponent ) {
 					_tmpComponent.text = LocalizationController.Instance.Translate(Id);
+					_tmpComponent.characterSpacing = _defaultSymbolSpacing;
 				}
 				if ( _textComponent ) {
 					_textComponent.text = LocalizationController.Instance.Translate(Id);
@@ -89,13 +102,16 @@ namespace SMGCore {
 			if ( string.IsNullOrEmpty(text) ) {
 				return;
 			}
-			if ( GetComponent<TMP_Text>() ) {
-				GetComponent<TMP_Text>().text = text;
+			var tmp_text = GetComponent<TMP_Text>();
+			if ( tmp_text ) {
+				tmp_text.text = text;
 			}
-			if ( GetComponent<Text>() ) {
-				GetComponent<Text>().text = text;
+			var textComponent = GetComponent<Text>();
+			if ( textComponent ) {
+				textComponent.text = text;
 			}
 		}
+		
 	}
 }
 #endif
