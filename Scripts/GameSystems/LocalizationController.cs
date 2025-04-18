@@ -107,6 +107,10 @@ namespace SMGCore {
 					_allLanguages.Add(lang.ToString(), (SystemLanguage)lang);
 				}
 			}
+			var streamingAssetsLocalePath = Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath);
+			if ( !Directory.Exists(streamingAssetsLocalePath) ) {
+				return;
+			}
 			var files = GetAllLanguageFilesFromStreamingAssets();
 			foreach ( var file in files ) {
 				var lang = file.Substring(file.LastIndexOf('_') + 1, file.LastIndexOf('.') - file.LastIndexOf('_') - 1);
