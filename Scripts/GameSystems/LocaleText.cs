@@ -46,13 +46,13 @@ namespace SMGCore {
 				return;
 			}
 			var currentLanguage = LocalizationController.Instance.CurrentLanguage;
-			if ( LocalizationController.IsHieroglyphicLanguage(currentLanguage) ) {
-				_tmpComponent.characterSpacing = Mathf.Max(_defaultSymbolSpacing, IncreasedSymbolSpacing);
-			} else {
-				_tmpComponent.characterSpacing = _defaultSymbolSpacing;
-			}
 			if ( _tmpComponent ) {
 				_tmpComponent.text = LocalizationController.Instance.Translate(Id);
+				if ( LocalizationController.IsHieroglyphicLanguage(currentLanguage) ) {
+					_tmpComponent.characterSpacing = Mathf.Max(_defaultSymbolSpacing, IncreasedSymbolSpacing);
+				} else {
+					_tmpComponent.characterSpacing = _defaultSymbolSpacing;
+				}
 			}
 			if ( _textComponent ) {
 				_textComponent.text = LocalizationController.Instance.Translate(Id);
