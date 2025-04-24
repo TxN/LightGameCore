@@ -38,6 +38,11 @@ namespace SMGCore {
 			}
 		}
 
+		public void AddDuration(float duration) {
+			shakeDuration = Mathf.Clamp(shakeDuration + duration, 0 , MaxDuration);
+			startDuration = shakeDuration;
+		}
+
 		public void ShakeCamera(float amount, float duration) {
 			decay = false;
 			shakeAmount = Mathf.Clamp(shakeAmount + amount,0, MaxAmount);
