@@ -28,6 +28,8 @@ namespace SMGCore {
 			return GetNewGeneric();
 		}
 
+		public PoolItem GetSourcePrefab => _prefab;
+
 		public override PoolItem GetNewGeneric() {
 			var item = CreateItem();
 			item.transform.SetParent(null);
