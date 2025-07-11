@@ -11,6 +11,7 @@ namespace SMGCore.Utils {
 		static Dictionary<Type, ConstructorInfo[]> _constructorCache;
 		static Dictionary<string, Type> _typeByFullName;
 		static Dictionary<Type,Type[]> _subclassCache;
+		static readonly Dictionary<(Type, Type), FieldInfo[]> _fieldsWithAttributeCache = new Dictionary<(Type, Type), FieldInfo[]>();
 
 		public static Type[] GetAllTypes() {
 			if ( _cachedTypes == null ) {
@@ -47,6 +48,7 @@ namespace SMGCore.Utils {
 			if ( _typeByFullName != null ) {
 				return _typeByFullName;
 			}
+			_typeByFullName = new Dictionary<string, Type>();
 			var types = GetAllTypes();
 			foreach ( var t in types ) {
 				var name = t.FullName;
@@ -109,6 +111,26 @@ namespace SMGCore.Utils {
 			var types = GetAllTypes().Where(p => p.IsSubclassOf(type)).ToArray();
 			_subclassCache.Add(type, types);
 			return types;
+		}
+
+		public static FieldInfo[] GetFieldsWithAttribute(Type objectType, Type attributeType) {
+			if ( objectType == null || attributeType == null ) {
+				return Array.Empty<FieldInfo>();
+			}
+
+			var cacheKey = (objectType, attributeType);
+
+			if ( _fieldsWithAttributeCache.TryGetValue(cacheKey, out var cachedFields) ) {
+				return cachedFields;
+			}
+
+			var fields = objectType
+				.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+				.Where(field => Attribute.IsDefined(field, attributeType))
+				.ToArray();
+
+			_fieldsWithAttributeCache[cacheKey] = fields;
+			return fields;
 		}
 
 		public static object CreateObjectWithActivator(Type type) {
