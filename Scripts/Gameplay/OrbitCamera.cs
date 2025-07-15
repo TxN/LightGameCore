@@ -170,7 +170,7 @@ namespace SMGCore {
                 float verticalInput = Input.GetAxis("Mouse Y") * LookSensitivity;
 
                 // Apply the offset
-                _targetPointOffset += (right * horizontalInput + up * verticalInput) * Time.deltaTime * 5f;
+                _targetPointOffset += (right * horizontalInput + up * verticalInput) * Time.unscaledDeltaTime * 5f;
 
                 // Clamp the total offset magnitude
                 if (_targetPointOffset.magnitude > MaxOffsetDistance) {
@@ -185,7 +185,7 @@ namespace SMGCore {
             }
 
             // Calculate target velocity
-            _targetVelocityMagnitude = Vector3.Distance(_lastTargetPosition, Target.position) / Time.deltaTime;
+            _targetVelocityMagnitude = Vector3.Distance(_lastTargetPosition, Target.position) / Time.unscaledDeltaTime;
             _lastTargetPosition = Target.position;
 
             // Handle rotation with right mouse button
@@ -234,7 +234,7 @@ namespace SMGCore {
 
             // Check for obstructions and adjust distance
             float targetDistance = CheckForObstructions(_targetPosition, desiredPosition);
-            _currentDistance = Mathf.Lerp(_currentDistance, targetDistance, Time.deltaTime * 5f);
+            _currentDistance = Mathf.Lerp(_currentDistance, targetDistance, Time.unscaledDeltaTime * 5f);
             
             var position = rotation * new Vector3(0.0f, 0.0f, -_currentDistance) + _targetPosition;
 

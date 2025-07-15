@@ -42,63 +42,134 @@ namespace SMGCore {
 		public float fastZoomSensitivity = 50f;
 
 		/// <summary>
+		/// Enable smoothing of camera movement. Can be toggled at runtime.
+		/// </summary>
+		[Tooltip("Enable smooth camera movement")]
+		public bool SmoothMovement = false;
+
+		/// <summary>
+		/// Interpolation factor for movement used when smoothing is enabled.
+		/// </summary>
+		[Range(0f, 1f)]
+		[Tooltip("Smoothing factor for movement (0–slow / 1–instant)")]
+		public float SmoothMovementFactor = 0.5f;
+
+		/// <summary>
+		/// Enable smoothing of camera rotation. Can be toggled at runtime.
+		/// </summary>
+		[Tooltip("Enable smooth camera rotation")]
+		public bool SmoothRotation = false;
+
+		/// <summary>
+		/// Interpolation factor for rotation used when smoothing is enabled.
+		/// </summary>
+		[Range(0f, 1f)]
+		[Tooltip("Smoothing factor for rotation (0–slow / 1–instant)")]
+		public float SmoothRotationFactor = 0.5f;
+
+		/// <summary>
 		/// Set to true when free looking (on right mouse button).
 		/// </summary>
 		private bool looking = false;
+
+		// Target values used for smoothing
+		private Vector3 _targetPosition;
+		private Quaternion _targetRotation;
+		private float _yaw;
+		private float _pitch;
+		// внутренние сглаженные значения, чтобы исключить крен
+		private float _smoothYaw;
+		private float _smoothPitch;
+
+		public void ForcePositionAndRotation(Vector3 position, Quaternion rotation) {
+			_targetPosition = position;
+			_targetRotation = rotation;
+			_yaw = rotation.eulerAngles.y;
+			_pitch = rotation.eulerAngles.x;
+			_smoothYaw = _yaw;
+		}
+
+		void OnEnable() {
+			ForcePositionAndRotation(transform.position, transform.rotation);
+		}
 
 		void Update() {
 			var fastMode = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 			var movementSpeed = fastMode ? this.fastMovementSpeed : this.movementSpeed;
 
+			// ---
+			// HANDLE TRANSLATION
+			// ---
+			var pos = _targetPosition; // begin with last frame's target
+
 			if ( Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) ) {
-				transform.position = transform.position + (-transform.right * movementSpeed * Time.deltaTime);
+				pos += -transform.right * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ) {
-				transform.position = transform.position + (transform.right * movementSpeed * Time.deltaTime);
+				pos += transform.right * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) ) {
-				transform.position = transform.position + (transform.forward * movementSpeed * Time.deltaTime);
+				pos += transform.forward * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ) {
-				transform.position = transform.position + (-transform.forward * movementSpeed * Time.deltaTime);
+				pos += -transform.forward * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.Q) ) {
-				transform.position = transform.position + (transform.up * movementSpeed * Time.deltaTime);
+				pos += transform.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.E) ) {
-				transform.position = transform.position + (-transform.up * movementSpeed * Time.deltaTime);
+				pos += -transform.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.PageUp) ) {
-				transform.position = transform.position + (Vector3.up * movementSpeed * Time.deltaTime);
+				pos += Vector3.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-
 			if ( Input.GetKey(KeyCode.F) || Input.GetKey(KeyCode.PageDown) ) {
-				transform.position = transform.position + (-Vector3.up * movementSpeed * Time.deltaTime);
+				pos += -Vector3.up * movementSpeed * Time.unscaledDeltaTime;
 			}
 
+			float scrollAxis = Input.GetAxis("Mouse ScrollWheel");
+			if (scrollAxis != 0) {
+				var zSens = fastMode ? fastZoomSensitivity : zoomSensitivity;
+				pos += transform.forward * scrollAxis * zSens;
+			}
+
+			_targetPosition = pos;
+
+			// ---
+			// HANDLE ROTATION
+			// ---
 			if ( looking ) {
-				float newRotationX = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * freeLookSensitivity;
-				float newRotationY = transform.localEulerAngles.x - Input.GetAxis("Mouse Y") * freeLookSensitivity;
-				transform.localEulerAngles = new Vector3(newRotationY, newRotationX, 0f);
+				_yaw += Input.GetAxis("Mouse X") * freeLookSensitivity;
+				_pitch -= Input.GetAxis("Mouse Y") * freeLookSensitivity;
 			}
-
-			float axis = Input.GetAxis("Mouse ScrollWheel");
-			if ( axis != 0 ) {
-				var zoomSensitivity = fastMode ? this.fastZoomSensitivity : this.zoomSensitivity;
-				transform.position = transform.position + transform.forward * axis * zoomSensitivity;
-			}
+			_targetRotation = Quaternion.Euler(_pitch, _yaw, 0f);
 
 			if ( Input.GetKeyDown(KeyCode.Mouse1) ) {
 				StartLooking();
 			}
 			else if ( Input.GetKeyUp(KeyCode.Mouse1) ) {
 				StopLooking();
+			}
+
+			// ---
+			// APPLY TO TRANSFORM WITH OPTIONAL SMOOTHING
+			// ---
+			if ( SmoothMovement ) {
+				float t = Mathf.Clamp01(SmoothMovementFactor);
+				transform.position = Vector3.Lerp(transform.position, _targetPosition, t);
+			} else {
+				transform.position = _targetPosition;
+			}
+
+			if ( SmoothRotation ) {
+				float t = Mathf.Clamp01(SmoothRotationFactor);
+				_smoothPitch = Mathf.LerpAngle(_smoothPitch, _pitch, t);
+				_smoothYaw   = Mathf.LerpAngle(_smoothYaw,   _yaw,   t);
+				transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
+			} else {
+				_smoothPitch = _pitch;
+				_smoothYaw = _yaw;
+				transform.rotation = _targetRotation;
 			}
 		}
 
