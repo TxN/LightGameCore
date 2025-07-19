@@ -67,6 +67,14 @@ namespace SMGCore {
 		[Tooltip("Smoothing factor for rotation (0–slow / 1–instant)")]
 		public float SmoothRotationFactor = 0.5f;
 
+		[Header("Noise")]
+		public bool UseCameraMovementNoise = false;
+		public float CameraMovementNoiseScale = 0.01f;
+		public float CameraNoiseSpeedMultiplier = 1f;
+		public float CameraNoiseBySpeedScale = 1f;
+		public float BaseCameraNoise = 0.1f;
+		public float NoiseVelocitySmoothFactor = 15f;
+
 		/// <summary>
 		/// Set to true when free looking (on right mouse button).
 		/// </summary>
@@ -81,19 +89,58 @@ namespace SMGCore {
 		private float _smoothYaw;
 		private float _smoothPitch;
 
+		private float _targetVelocityMagnitude;
+		private Vector3 _noiseOffset;
+		private Vector3 _currentPosition;
+
+		bool _velocityMatchMode = false;
+		Transform _targetTransform;
+		Vector3 _lastTargetTransformPosition;
+
+		public bool VelocityMatchEnabled => _velocityMatchMode && _targetTransform != null;
+		public Transform VelocityMatchTarget => _targetTransform;
+
+		[ContextMenu("Toggle Velocity Match Mode")]
+		public void ToggleVelocityMatchMode() {
+			_velocityMatchMode = !_velocityMatchMode;
+			if ( _velocityMatchMode ) {
+				var raycastHit = Physics.Raycast(transform.position, transform.forward, out var hit, 100f);
+				if ( raycastHit ) {
+					_targetTransform = hit.transform;
+					_lastTargetTransformPosition = _targetTransform.position;
+				} else {
+					_velocityMatchMode = false;
+				}
+			}
+			if (!_velocityMatchMode ) {
+				_targetTransform = null;
+				_lastTargetTransformPosition = Vector3.zero;
+			}			
+		}
+
 		public void ForcePositionAndRotation(Vector3 position, Quaternion rotation) {
 			_targetPosition = position;
 			_targetRotation = rotation;
 			_yaw = rotation.eulerAngles.y;
 			_pitch = rotation.eulerAngles.x;
 			_smoothYaw = _yaw;
+			_currentPosition = position;
 		}
 
 		void OnEnable() {
 			ForcePositionAndRotation(transform.position, transform.rotation);
+			_noiseOffset = new Vector3(Random.Range(0f, 1000f), Random.Range(0f, 1000f), Random.Range(0f, 1000f));
 		}
 
 		void Update() {
+			var prevPosition = _currentPosition;
+			Vector3 targetDisplacement = Vector3.zero;
+			if ( _velocityMatchMode && _targetTransform ) {
+				var targetPosition = _targetTransform.position;
+				targetDisplacement = targetPosition - _lastTargetTransformPosition;
+				_lastTargetTransformPosition = targetPosition;
+			}
+			
 			var fastMode = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 			var movementSpeed = fastMode ? this.fastMovementSpeed : this.movementSpeed;
 
@@ -156,10 +203,17 @@ namespace SMGCore {
 			// ---
 			if ( SmoothMovement ) {
 				float t = Mathf.Clamp01(SmoothMovementFactor);
-				transform.position = Vector3.Lerp(transform.position, _targetPosition, t);
+				_currentPosition = Vector3.Lerp(_currentPosition, _targetPosition, t);
 			} else {
-				transform.position = _targetPosition;
+				_currentPosition = _targetPosition;
 			}
+			
+			if ( _velocityMatchMode && _targetTransform != null ) {
+				_currentPosition += targetDisplacement;
+				_targetPosition += targetDisplacement;
+			}
+
+			transform.position = _currentPosition;
 
 			if ( SmoothRotation ) {
 				float t = Mathf.Clamp01(SmoothRotationFactor);
@@ -170,6 +224,13 @@ namespace SMGCore {
 				_smoothPitch = _pitch;
 				_smoothYaw = _yaw;
 				transform.rotation = _targetRotation;
+			}
+
+			if (UseCameraMovementNoise) {
+				var instantaneousVelocity = Vector3.Distance(prevPosition, _currentPosition) / Time.unscaledDeltaTime;
+				_targetVelocityMagnitude = Mathf.Lerp(_targetVelocityMagnitude, instantaneousVelocity, Time.unscaledDeltaTime * NoiseVelocitySmoothFactor);
+				transform.position += GetPerlinNoiseOffset(Time.time);
+				transform.rotation *= GetPerlinNoiseRotation(Time.time);
 			}
 		}
 
@@ -193,6 +254,28 @@ namespace SMGCore {
 			looking = false;
 			Cursor.visible = true;
 			Cursor.lockState = CursorLockMode.None;
+		}
+
+		private Vector3 GetPerlinNoiseOffset(float time) {
+			float scale = CameraMovementNoiseScale * (BaseCameraNoise + _targetVelocityMagnitude * CameraNoiseBySpeedScale);
+			float speed = time * CameraNoiseSpeedMultiplier;
+            
+			return new Vector3(
+				(Mathf.PerlinNoise(_noiseOffset.x + speed, 0f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.y + speed, 0f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.z + speed, 0f) - 0.5f) * scale
+			);
+		}
+
+		private Quaternion GetPerlinNoiseRotation(float time) {
+			float scale = CameraMovementNoiseScale * 15f * (BaseCameraNoise + _targetVelocityMagnitude * CameraNoiseBySpeedScale);
+			float speed = time * CameraNoiseSpeedMultiplier;
+            
+			return Quaternion.Euler(
+				(Mathf.PerlinNoise(_noiseOffset.x + speed + 100f, 0f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.y + speed + 100f, 0f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.z + speed + 100f, 0f) - 0.5f) * scale
+			);
 		}
 	}
 }

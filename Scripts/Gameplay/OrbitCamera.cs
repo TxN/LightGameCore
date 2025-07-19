@@ -61,6 +61,8 @@ namespace SMGCore {
         private float _velocityX;
         private float _velocityY;
 
+        Transform _initialTarget;
+
         void Start() {
             if (Target != null) {
                 transform.LookAt(Target);
@@ -73,6 +75,7 @@ namespace SMGCore {
                 _lastTargetPosition = Target.position;
                 _noiseOffset = new Vector3(Random.Range(0f, 1000f), Random.Range(0f, 1000f), Random.Range(0f, 1000f));
                 _currentDistance = Distance;
+                _initialTarget = Target;
             }
         }
 
@@ -194,8 +197,7 @@ namespace SMGCore {
                     _isRotating = true;
                     Cursor.visible = false;
                     Cursor.lockState = CursorLockMode.Locked;
-                }
-                else if (Input.GetMouseButtonUp(1)) {
+                } else if (Input.GetMouseButtonUp(1)) {
                     _isRotating = false;
                     Cursor.visible = true;
                     Cursor.lockState = CursorLockMode.None;
