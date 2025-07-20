@@ -108,11 +108,19 @@ namespace SMGCore {
 				if ( raycastHit ) {
 					_targetTransform = hit.transform;
 					_lastTargetTransformPosition = _targetTransform.position;
+					var rb = _targetTransform.GetComponentInParent<Rigidbody>();
+					if ( rb ) {
+						rb.interpolation = RigidbodyInterpolation.Interpolate;
+					}
 				} else {
 					_velocityMatchMode = false;
 				}
 			}
 			if (!_velocityMatchMode ) {
+				var rb = _targetTransform.GetComponentInParent<Rigidbody>();
+				if ( rb ) {
+					rb.interpolation = RigidbodyInterpolation.None;
+				}
 				_targetTransform = null;
 				_lastTargetTransformPosition = Vector3.zero;
 			}			
