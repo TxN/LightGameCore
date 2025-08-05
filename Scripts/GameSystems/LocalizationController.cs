@@ -20,9 +20,10 @@ namespace SMGCore {
 		Dictionary<string, TranslationNode> _currentLocale = new Dictionary<string, TranslationNode>();
 
 		public static readonly List<SystemLanguage> SupportedLanguages = new List<SystemLanguage> {
-		SystemLanguage.English,
-		SystemLanguage.Russian,
-		SystemLanguage.Chinese,
+			SystemLanguage.English,
+			SystemLanguage.Russian,
+			SystemLanguage.Chinese,
+			SystemLanguage.Japanese,
 		};
 		bool _isInitialized = false;
 
