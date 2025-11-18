@@ -21,6 +21,28 @@ namespace SMGCore.Utils {
 			return _cachedTypes;
 		}
 
+		public static List<Type> GetAllBaseTypesIncludingSelf(Type type) {
+			if ( type == null ) {
+				return new List<Type>();
+			}
+			var baseTypes = new List<Type>();
+			var currentType = type;
+			while ( currentType != null ) {
+				baseTypes.Add(currentType);
+				currentType = currentType.BaseType;
+			}
+			return baseTypes;
+		}
+
+		public static List<MethodInfo> GetAllMethodsIncludingBaseTypes(Type type, BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly) {
+			if ( type == null ) {
+				return new List<MethodInfo>();
+			}
+			var baseTypes = GetAllBaseTypesIncludingSelf(type);
+			var methods = baseTypes.SelectMany(t => t.GetMethods(bindingFlags)).ToList();
+			return methods;
+		}
+
 		public static Type[] GetAllTypesNonCached(List<string> assemblyNames = null) {
 			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
