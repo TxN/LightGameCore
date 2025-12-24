@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace SMGCore {
     public class OrbitCamera : MonoBehaviour {
@@ -152,14 +153,14 @@ namespace SMGCore {
         }
 
         private void UpdateTargetOffset() {
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
-                if (Input.GetMouseButtonDown(1)) {
+            if (Keyboard.current[Key.LeftShift].isPressed || Keyboard.current[Key.RightShift].isPressed) {
+                if (Mouse.current.rightButton.wasPressedThisFrame) {
                     _isAdjustingOffset = true;
                     _isRotating = false;
                 }
             }
             
-            if (Input.GetMouseButtonUp(1)) {
+            if (Mouse.current.rightButton.wasReleasedThisFrame) {
                 _isAdjustingOffset = false;
             }
 
@@ -169,8 +170,8 @@ namespace SMGCore {
                 Vector3 up = transform.up;
 
                 // Calculate offset based on mouse movement
-                float horizontalInput = Input.GetAxis("Mouse X") * LookSensitivity;
-                float verticalInput = Input.GetAxis("Mouse Y") * LookSensitivity;
+                float horizontalInput = Mouse.current.delta.x.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                float verticalInput = Mouse.current.delta.y.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
 
                 // Apply the offset
                 _targetPointOffset += (right * horizontalInput + up * verticalInput) * Time.unscaledDeltaTime * 5f;
@@ -193,19 +194,19 @@ namespace SMGCore {
 
             // Handle rotation with right mouse button
             if (!_isAdjustingOffset) {
-                if (Input.GetMouseButtonDown(1)) {
+                if (Mouse.current.rightButton.wasPressedThisFrame) {
                     _isRotating = true;
                     Cursor.visible = false;
                     Cursor.lockState = CursorLockMode.Locked;
-                } else if (Input.GetMouseButtonUp(1)) {
+                } else if (Mouse.current.rightButton.wasReleasedThisFrame) {
                     _isRotating = false;
                     Cursor.visible = true;
                     Cursor.lockState = CursorLockMode.None;
                 }
 
                 if (_isRotating) {
-                    _currentX += Input.GetAxis("Mouse X") * LookSensitivity;
-                    _currentY -= Input.GetAxis("Mouse Y") * LookSensitivity;
+                    _currentX += Mouse.current.delta.x.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                    _currentY -= Mouse.current.delta.y.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
                     _currentY = Mathf.Clamp(_currentY, -85f, 85f);
                 }
             }
@@ -223,7 +224,7 @@ namespace SMGCore {
             UpdateTargetOffset();
 
             // Handle zoom with mouse wheel
-            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            float scroll = Mouse.current.scroll.y.ReadValue();
             Distance -= scroll * ZoomSensitivity;
             Distance = Mathf.Clamp(Distance, DistanceLimits.x, DistanceLimits.y);
 
