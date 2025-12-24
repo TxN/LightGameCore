@@ -6,7 +6,7 @@ namespace SMGCore {
 		public static T Instance {
 			get {
 				if ( !_instance ) {
-					_instance = FindObjectOfType<T>(true);
+					_instance = FindFirstObjectByType<T>(FindObjectsInactive.Include);
 					if ( !_instance ) {
 						Debug.LogWarning($"ManualSingleton({typeof(T).ToString()}).InstanceProperty: Cannot find instance");
 					}

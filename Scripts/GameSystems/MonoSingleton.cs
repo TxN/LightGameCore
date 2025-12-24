@@ -3,10 +3,11 @@ using UnityEngine;
 
 namespace SMGCore {
 	public class MonoSingleton<T> : MonoBehaviour where T : MonoBehaviour {
+
 		public static T Instance {
 			get {
 				if ( !_instance ) {
-					_instance = (T)FindObjectOfType(typeof(T));
+					_instance = FindFirstObjectByType<T>(FindObjectsInactive.Include);
 				}
 				if ( !_instance ) {
 					var obj = new GameObject(typeof(T).ToString());
