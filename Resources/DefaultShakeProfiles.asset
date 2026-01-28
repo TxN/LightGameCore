@@ -226,3 +226,33 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
+  - Name: gun_shot
+    NoiseType: 1
+    Frequency: 5
+    RotationMultiplier: {x: 1, y: 1, z: 0}
+    PositionMultiplier: {x: 0.25, y: 0.25, z: 0}
+    Smoothness: 5
+    FalloffCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: -3.9689953
+        outSlope: -3.9689953
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.03426235
+      - serializedVersion: 3
+        time: 0.9994507
+        value: 0
+        inSlope: -0.39182246
+        outSlope: -0.39182246
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.07162935
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
