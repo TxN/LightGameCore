@@ -20,6 +20,7 @@ namespace SMGCore {
 
     [CreateAssetMenu(fileName = "ShakeProfileCollection", menuName = "SMGCore/Shake Profile Collection", order = 0)]
     public class ShakeProfileCollection : ScriptableObject {
+        public AnimationCurve DefaultDistanceFalloffCurve = AnimationCurve.Linear(0f, 1f, 65f, 0f);
         public List<ShakeProfile> Profiles = new List<ShakeProfile>();
     }
 }

@@ -12,6 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b0d2264b44f0634180d1f95b3a6b1b4, type: 3}
   m_Name: DefaultShakeProfiles
   m_EditorClassIdentifier: 
+  DefaultDistanceFalloffCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: -0.0017458104
+      outSlope: -0.0017458104
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.06179775
+    - serializedVersion: 3
+      time: 65
+      value: 0
+      inSlope: -0.006073771
+      outSlope: -0.006073771
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.06039335
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   Profiles:
   - Name: basic_perlin
     NoiseType: 1
