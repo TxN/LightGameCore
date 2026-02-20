@@ -357,7 +357,7 @@ namespace SMGCore {
 			}
 			var node = loc.SelectSingleNode("root/" + path.Replace('.', '/'));
 			if ( node == null ) {
-				Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot find node with path {path} in locale {language}");
+				//Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot find node with path {path} in locale {language}");
 				return "!!!";
 			}
 			return node.GetAttrValue("text", "!!!");

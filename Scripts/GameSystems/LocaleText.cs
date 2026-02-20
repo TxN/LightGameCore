@@ -19,6 +19,15 @@ namespace SMGCore {
 
 		float _defaultSymbolSpacing = 0f;
 
+		public void SetText(string text) {
+			if ( _tmpComponent ) {
+				_tmpComponent.text = text;
+			}
+			if ( _textComponent ) {
+				_textComponent.text = text;
+			}
+		}
+
 		void Awake() {
 			_tmpComponent = GetComponent<TMP_Text>();
 			_textComponent = GetComponent<Text>();
