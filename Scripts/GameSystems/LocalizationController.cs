@@ -181,6 +181,24 @@ namespace SMGCore {
 			return result;
 		}
 
+		public void AddDynamicTranslation(string id, string text, bool overwrite = false) {
+			if ( string.IsNullOrEmpty(id) ) {
+				Debug.LogError("LocalizationController.AddDynamicTranslation: id is null or empty");
+				return;
+			}
+			if ( !overwrite && _currentLocale.ContainsKey(id) ) {
+				return;
+			}
+			_currentLocale[id] = new TranslationNode { Path = id, Text = text ?? string.Empty };
+		}
+
+		public void RemoveDynamicTranslation(string id) {
+			if ( string.IsNullOrEmpty(id) ) {
+				return;
+			}
+			_currentLocale.Remove(id);
+		}
+
 		public TranslationNode GetSameLevelNode(string sourceId, string targetName) {
 			var basePath = sourceId.Substring(0, sourceId.LastIndexOf('.'));
 			return GetTranslationNode($"{basePath}.{targetName}");
