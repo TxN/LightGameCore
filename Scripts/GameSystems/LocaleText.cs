@@ -10,6 +10,8 @@ namespace SMGCore {
 	[DisallowMultipleComponent]
 	public sealed class LocaleText : MonoBehaviour {
 		const float IncreasedSymbolSpacing = 5f;
+		
+		[LocKeyField]
 		public string Id = string.Empty;
 
 		public SystemLanguage EditorLanguage = SystemLanguage.Russian;
