@@ -91,6 +91,8 @@ namespace SMGCore {
 		private float _smoothPitch;
 
 		private float _targetVelocityMagnitude;
+		private float _smoothedNoiseAmplitude;
+		private float _noiseTime;
 		private Vector3 _noiseOffset;
 		private Vector3 _currentPosition;
 
@@ -139,9 +141,11 @@ namespace SMGCore {
 		void OnEnable() {
 			ForcePositionAndRotation(transform.position, transform.rotation);
 			_noiseOffset = new Vector3(Random.Range(0f, 1000f), Random.Range(0f, 1000f), Random.Range(0f, 1000f));
+			_noiseTime = 0f;
+			_smoothedNoiseAmplitude = CameraMovementNoiseScale * BaseCameraNoise;
 		}
 
-		void Update() {
+		void LateUpdate() {
 			var prevPosition = _currentPosition;
 			Vector3 targetDisplacement = Vector3.zero;
 			if ( _velocityMatchMode && _targetTransform ) {
@@ -238,8 +242,15 @@ namespace SMGCore {
 			if (UseCameraMovementNoise) {
 				var instantaneousVelocity = Vector3.Distance(prevPosition, _currentPosition) / Time.unscaledDeltaTime;
 				_targetVelocityMagnitude = Mathf.Lerp(_targetVelocityMagnitude, instantaneousVelocity, Time.unscaledDeltaTime * NoiseVelocitySmoothFactor);
-				transform.position += GetPerlinNoiseOffset(Time.time);
-				transform.rotation *= GetPerlinNoiseRotation(Time.time);
+
+				float cappedDt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+				_noiseTime += cappedDt;
+
+				float targetAmplitude = CameraMovementNoiseScale * (BaseCameraNoise + _targetVelocityMagnitude * CameraNoiseBySpeedScale);
+				_smoothedNoiseAmplitude = Mathf.Lerp(_smoothedNoiseAmplitude, targetAmplitude, Time.unscaledDeltaTime * NoiseVelocitySmoothFactor);
+
+				transform.position += GetPerlinNoiseOffset(_noiseTime, _smoothedNoiseAmplitude);
+				transform.rotation *= GetPerlinNoiseRotation(_noiseTime, _smoothedNoiseAmplitude);
 			}
 		}
 
@@ -265,25 +276,22 @@ namespace SMGCore {
 			Cursor.lockState = CursorLockMode.None;
 		}
 
-		private Vector3 GetPerlinNoiseOffset(float time) {
-			float scale = CameraMovementNoiseScale * (BaseCameraNoise + _targetVelocityMagnitude * CameraNoiseBySpeedScale);
+		private Vector3 GetPerlinNoiseOffset(float time, float scale) {
 			float speed = time * CameraNoiseSpeedMultiplier;
-            
 			return new Vector3(
-				(Mathf.PerlinNoise(_noiseOffset.x + speed, 0f) - 0.5f) * scale,
-				(Mathf.PerlinNoise(_noiseOffset.y + speed, 0f) - 0.5f) * scale,
-				(Mathf.PerlinNoise(_noiseOffset.z + speed, 0f) - 0.5f) * scale
+				(Mathf.PerlinNoise(_noiseOffset.x + speed, 2.3f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.y + speed, 5.7f) - 0.5f) * scale,
+				(Mathf.PerlinNoise(_noiseOffset.z + speed, 8.1f) - 0.5f) * scale
 			);
 		}
 
-		private Quaternion GetPerlinNoiseRotation(float time) {
-			float scale = CameraMovementNoiseScale * 15f * (BaseCameraNoise + _targetVelocityMagnitude * CameraNoiseBySpeedScale);
+		private Quaternion GetPerlinNoiseRotation(float time, float scale) {
+			float rotScale = scale * 15f;
 			float speed = time * CameraNoiseSpeedMultiplier;
-            
 			return Quaternion.Euler(
-				(Mathf.PerlinNoise(_noiseOffset.x + speed + 100f, 0f) - 0.5f) * scale,
-				(Mathf.PerlinNoise(_noiseOffset.y + speed + 100f, 0f) - 0.5f) * scale,
-				(Mathf.PerlinNoise(_noiseOffset.z + speed + 100f, 0f) - 0.5f) * scale
+				(Mathf.PerlinNoise(_noiseOffset.x + speed + 25.3f, 5.35f) - 0.5f) * rotScale,
+				(Mathf.PerlinNoise(_noiseOffset.y + speed + 12.7f, -0.7f) - 0.5f) * rotScale,
+				(Mathf.PerlinNoise(_noiseOffset.z + speed + 3.1f, 1.1f) - 0.5f) * rotScale
 			);
 		}
 	}
