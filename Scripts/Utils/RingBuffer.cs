@@ -27,7 +27,7 @@ namespace RingBuffer {
     /// </summary>
     /// <typeparam name="T">The type of data stored in the buffer</typeparam>
     public class RingBuffer<T> : IEnumerable<T>, IEnumerable, ICollection<T>, 
-        ICollection {
+        ICollection, IReadOnlyList<T> {
 
         protected int head = 0;
         protected int tail = 0;
@@ -137,6 +137,15 @@ namespace RingBuffer {
         #region ICollection<T> Members
         public int Count { get { return size; } }
         public bool IsReadOnly { get { return false; } }
+
+        public T this[int index] {
+            get {
+                if ( index < 0 || index >= size ) {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+                return buffer[(head + index) % Capacity];
+            }
+        }
 
         public void Add(T item) {
             Put(item);
