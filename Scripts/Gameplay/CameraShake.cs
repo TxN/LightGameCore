@@ -105,7 +105,13 @@ namespace SMGCore {
 	[Sirenix.OdinInspector.Button]
 #endif
 		public void Shake(string profileName, float amount, float duration, bool decay = true, string id = LegacyShakeId) {
-			var profile = _profiles.Find(p => p.Name == profileName);
+			ShakeProfile profile =  null;
+			foreach ( var p in _profiles ) {
+				if ( p.Name == profileName ) {
+					profile = p;
+					break;
+				}
+			}
 			if ( profile == null ) {
 				profile = LegacyProfile;
 			}
@@ -116,7 +122,13 @@ namespace SMGCore {
 			if ( profile == null ) {
 				profile = LegacyProfile;
 			}
-			var existing = _activeInstances.Find(x => x.ID == id);
+			ShakeInstance existing = null;
+			foreach ( var inst in _activeInstances ) {
+				if ( inst.ID == id ) {
+					existing = inst;
+					break;
+				}
+			}
 			if ( existing != null ) {
 				existing.MaxAmount = amount;
 				existing.Duration = duration;
@@ -129,11 +141,16 @@ namespace SMGCore {
 		}
 
 		public ShakeInstance GetShake(string id = LegacyShakeId) {
-			return _activeInstances.Find(x => x.ID == id);
+			foreach ( var inst in _activeInstances ) {
+				if ( inst.ID == id ) {
+					return inst;
+				}
+			}
+			return null;
 		}
 
 		public void StopShake(string id = LegacyShakeId) {
-			var item = _activeInstances.Find(x => x.ID == id);
+			var item = GetShake(id);
 			if (item != null) {
 				_activeInstances.Remove(item);
 			} 
@@ -219,8 +236,7 @@ namespace SMGCore {
 					if (smooth) {
 						transform.localRotation = Quaternion.Lerp(transform.localRotation, Quaternion.Euler(targetRotationEuler), Time.deltaTime * currentSmoothAmount);
 						transform.localPosition = Vector3.Lerp(transform.localPosition, targetPosition, Time.deltaTime * currentSmoothAmount);
-					}
-					else {
+					} else {
 						transform.localRotation = Quaternion.Euler(targetRotationEuler);
 						transform.localPosition = targetPosition;
 					}
