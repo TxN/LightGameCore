@@ -6,6 +6,7 @@ namespace Utils {
 	sealed class UntypedHandler : HandlerBase {
 		readonly List<Action> _actions  = new List<Action>(10);
 		readonly List<Action> _removed  = new List<Action>(10);
+		int _fireDepth;
 
 		public void Subscribe(object watcher, Action action) {
 			if ( _removed.Contains(action) ) {
@@ -55,22 +56,29 @@ namespace Utils {
 		}
 
 		public void Fire() {
-			for ( var i = 0; i < _actions.Count; i++ ) {
-				var current = _actions[i];
-				if ( _removed.Contains(current) ) {
-					continue;
-				}
-				try {
-					current.Invoke();
-				} catch ( Exception e ) {
+			_fireDepth++;
+			try {
+				for ( var i = 0; i < _actions.Count; i++ ) {
+					var current = _actions[i];
+					if ( _removed.Contains(current) ) {
+						continue;
+					}
+					try {
+						current.Invoke();
+					} catch ( Exception e ) {
 #if UNITY_2017_1_OR_NEWER
-					Debug.LogException(e);
+						Debug.LogException(e);
 #else
-					Console.WriteLine( e.ToString() );
+						Console.WriteLine( e.ToString() );
 #endif
+					}
+				}
+			} finally {
+				_fireDepth--;
+				if ( _fireDepth == 0 ) {
+					CleanUp();
 				}
 			}
-			CleanUp();
 			if ( AllFireLogs ) {
 #if UNITY_2017_1_OR_NEWER
 				Debug.Log($"[{nameof(UntypedHandler)}] fired (Listeners: { Watchers.Count})");
@@ -79,6 +87,9 @@ namespace Utils {
 		}
 
 		public override void CleanUp() {
+			if ( _fireDepth > 0 ) {
+				return;
+			}
 			foreach ( var item in _removed ) {
 				FullUnsubscribe(item);
 			}

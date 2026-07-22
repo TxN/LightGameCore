@@ -33,6 +33,7 @@ namespace SMGCore.EventSys {
 
 		List<Action<T>> _actions = new List<Action<T>>(100);
 		List<Action<T>> _removed = new List<Action<T>>(100);
+		int _fireDepth;
 
 		public void Subscribe(object watcher, Action<T> action) {
 			if ( _removed.Contains(action) ) {
@@ -72,16 +73,26 @@ namespace SMGCore.EventSys {
 		}
 
 		public void Fire(T arg) {
-			for (int i = 0; i < _actions.Count; i++) {
-				var current = _actions[i];
-				if ( !_removed.Contains(current) ) {
-					current.Invoke(arg);
+			_fireDepth++;
+			try {
+				for (int i = 0; i < _actions.Count; i++) {
+					var current = _actions[i];
+					if ( !_removed.Contains(current) ) {
+						current.Invoke(arg);
+					}
+				}
+			} finally {
+				_fireDepth--;
+				if ( _fireDepth == 0 ) {
+					CleanUp();
 				}
 			}
-			CleanUp();
 		}
 
 		public override void CleanUp() {
+			if ( _fireDepth > 0 ) {
+				return;
+			}
 			var iter = _removed.GetEnumerator();
 			while (iter.MoveNext()) {
 				FullUnsubscribe(iter.Current);

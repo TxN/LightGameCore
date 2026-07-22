@@ -6,6 +6,7 @@ namespace Utils {
 	sealed class Handler<T> : HandlerBase {
 		List<Action<T>> _actions  = new List<Action<T>>(100);
 		List<Action<T>> _removed  = new List<Action<T>>(100);
+		int _fireDepth;
 		public int ActionsCount => _actions.Count;
 
 		public void Subscribe(object watcher, Action<T> action) {
@@ -56,22 +57,29 @@ namespace Utils {
 		}
 
 		public void Fire(T arg) {
-			for ( var i = 0; i < _actions.Count; i++ ) {
-				var current = _actions[i];
-				if ( _removed.Contains(current) ) {
-					continue;
-				}
-				try {
-					current.Invoke(arg);
-				} catch ( Exception e ) {
+			_fireDepth++;
+			try {
+				for ( var i = 0; i < _actions.Count; i++ ) {
+					var current = _actions[i];
+					if ( _removed.Contains(current) ) {
+						continue;
+					}
+					try {
+						current.Invoke(arg);
+					} catch ( Exception e ) {
 #if UNITY_2017_1_OR_NEWER
-					Debug.LogException(e);
+						Debug.LogException(e);
 #else
-					Console.WriteLine( e.ToString() );
+						Console.WriteLine( e.ToString() );
 #endif
+					}
+				}
+			} finally {
+				_fireDepth--;
+				if ( _fireDepth == 0 ) {
+					CleanUp();
 				}
 			}
-			CleanUp();
 			if ( AllFireLogs ) {
 #if UNITY_2017_1_OR_NEWER
 				Debug.Log($"[{ typeof(T).Name}] fired (Listeners: {Watchers.Count})");
@@ -80,6 +88,9 @@ namespace Utils {
 		}
 
 		public override void CleanUp() {
+			if ( _fireDepth > 0 ) {
+				return;
+			}
 			foreach ( var item in _removed ) {
 				FullUnsubscribe(item);
 			}
