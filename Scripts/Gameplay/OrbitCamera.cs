@@ -86,10 +86,35 @@ namespace SMGCore {
         }
 
         public void SetTarget(Transform target) {
-            if ( Target ) {
+            SetTarget(target, null);
+        }
+
+        public void SetTarget(Transform target, Quaternion? initialRotation) {
+            if (Target) {
                 OnDisable();
             }
+
             Target = target;
+            _targetPointOffset = Vector3.zero;
+            _targetPosition = target ? target.position : Vector3.zero;
+            _lastTargetPosition = target ? target.position : Vector3.zero;
+            _currentDistance = Distance;
+
+            if (initialRotation.HasValue) {
+                var euler = initialRotation.Value.eulerAngles;
+                _currentX = euler.y;
+                _currentY = euler.x;
+            } else if (target != null) {
+                var direction = (transform.position - target.position).normalized;
+                if (direction.sqrMagnitude > 0f) {
+                    var euler = Quaternion.LookRotation(direction).eulerAngles;
+                    _currentX = euler.y;
+                    _currentY = euler.x;
+                }
+            }
+
+            _smoothX = _currentX;
+            _smoothY = _currentY;
             OnEnable();
         }
 
