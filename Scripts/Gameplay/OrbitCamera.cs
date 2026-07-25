@@ -30,6 +30,11 @@ namespace SMGCore {
 		public float LookSensitivity = 3f;
 
 		/// <summary>
+		/// Sensitivity for keyboard rotation with WASD.
+		/// </summary>
+		public float KeyboardRotationSensitivity = 15f;
+
+		/// <summary>
 		/// Amount to zoom the camera when using the mouse wheel.
 		/// </summary>
         public float ZoomSensitivity = 10f;
@@ -210,6 +215,35 @@ namespace SMGCore {
             }
         }
 
+        private void UpdateKeyboardRotation() {
+            if (_isAdjustingOffset) {
+                return;
+            }
+
+            float horizontalInput = 0f;
+            float verticalInput = 0f;
+
+            if (Keyboard.current[Key.A].isPressed) {
+                horizontalInput += 1f;
+            }
+            if (Keyboard.current[Key.D].isPressed) {
+                horizontalInput -= 1f;
+            }
+            if (Keyboard.current[Key.W].isPressed) {
+                verticalInput += 1f;
+            }
+            if (Keyboard.current[Key.S].isPressed) {
+                verticalInput -= 1f;
+            }
+
+            if (horizontalInput != 0f || verticalInput != 0f) {
+                float keyboardRotationSpeed = KeyboardRotationSensitivity * Time.unscaledDeltaTime * 2f;
+                _currentX += horizontalInput * keyboardRotationSpeed;
+                _currentY += verticalInput * keyboardRotationSpeed;
+                _currentY = Mathf.Clamp(_currentY, -85f, 85f);
+            }
+        }
+
         void LateUpdate() {
             if (Target == null) {
                 return;
@@ -238,6 +272,8 @@ namespace SMGCore {
                     _currentY = Mathf.Clamp(_currentY, -85f, 85f);
                 }
             }
+
+            UpdateKeyboardRotation();
 
             // Apply rotation smoothing
             if (UseRotationSmoothing) {
