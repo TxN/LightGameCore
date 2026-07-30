@@ -16,10 +16,14 @@ namespace SMGCore {
 
 		public SystemLanguage EditorLanguage = SystemLanguage.Russian;
 
+		public bool ForceRebuildLayout = false;
+
 		TMP_Text _tmpComponent = null;
 		Text _textComponent = null;
 
 		float _defaultSymbolSpacing = 0f;
+
+		RectTransform _rectTransform = null;
 
 		public void SetText(string text) {
 			if ( _tmpComponent ) {
@@ -33,6 +37,7 @@ namespace SMGCore {
 		void Awake() {
 			_tmpComponent = GetComponent<TMP_Text>();
 			_textComponent = GetComponent<Text>();
+			_rectTransform = GetComponent<RectTransform>();
 			if ( _tmpComponent ) {
 				_defaultSymbolSpacing = _tmpComponent.characterSpacing;
 			}
@@ -58,7 +63,8 @@ namespace SMGCore {
 			}
 			var currentLanguage = LocalizationController.Instance.CurrentLanguage;
 			if ( _tmpComponent ) {
-				_tmpComponent.text = LocalizationController.Instance.Translate(Id);
+				_tmpComponent.SetText(LocalizationController.Instance.Translate(Id));
+				_tmpComponent.ForceMeshUpdate();
 				if ( LocalizationController.IsHieroglyphicLanguage(currentLanguage) ) {
 					_tmpComponent.characterSpacing = Mathf.Max(_defaultSymbolSpacing, IncreasedSymbolSpacing);
 				} else {
@@ -67,6 +73,9 @@ namespace SMGCore {
 			}
 			if ( _textComponent ) {
 				_textComponent.text = LocalizationController.Instance.Translate(Id);
+			}
+			if ( ForceRebuildLayout && _rectTransform ) {
+				LayoutRebuilder.ForceRebuildLayoutImmediate(_rectTransform);
 			}
 		}
 
