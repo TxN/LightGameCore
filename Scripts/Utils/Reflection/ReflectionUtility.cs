@@ -13,9 +13,20 @@ namespace SMGCore.Utils {
 		static Dictionary<Type,Type[]> _subclassCache;
 		static readonly Dictionary<(Type, Type), FieldInfo[]> _fieldsWithAttributeCache = new Dictionary<(Type, Type), FieldInfo[]>();
 
+#if UNITY_2019_3_OR_NEWER
+		[UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+		static void ResetStatics() {
+			_cachedTypes = null;
+			_constructorCache = null;
+			_typeByFullName = null;
+			_subclassCache = null;
+			_fieldsWithAttributeCache.Clear();
+		}
+#endif
+
 		public static Type[] GetAllTypes() {
 			if ( _cachedTypes == null ) {
-				_cachedTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).ToArray();
+				_cachedTypes = CollectTypes(AppDomain.CurrentDomain.GetAssemblies());
 				_subclassCache = null;
 			}
 			return _cachedTypes;
@@ -49,7 +60,7 @@ namespace SMGCore.Utils {
 			if (
 				(assemblyNames == null) || (assemblyNames.Count == 0) ||
 				((assemblyNames.Count == 1) && (assemblyNames[0] == "Assembly-CSharp")) ) {
-				return assemblies.SelectMany(a => a.GetTypes()).ToArray();
+				return CollectTypes(assemblies);
 			}
 
 			var set = new HashSet<string>();
@@ -63,25 +74,48 @@ namespace SMGCore.Utils {
 					selectedAssemblies.Add(asm);
 				}
 			}
-			return selectedAssemblies.SelectMany(s => s.GetTypes()).ToArray();
+			return CollectTypes(selectedAssemblies);
 		}
 
 		public static Dictionary<string, Type> GetTypeCache() {
 			if ( _typeByFullName != null ) {
 				return _typeByFullName;
 			}
-			_typeByFullName = new Dictionary<string, Type>();
 			var types = GetAllTypes();
+			var cache = new Dictionary<string, Type>(types.Length);
 			foreach ( var t in types ) {
 				var name = t.FullName;
-#if UNITY_EDITOR
-				if ( _typeByFullName.ContainsKey(name) ) {
-					UnityEngine.Debug.LogError($"ReflectionUtility: duplicate types found: {t.FullName}");
+				if ( string.IsNullOrEmpty(name) || name[0] == '<' ) {
+					continue;
 				}
-#endif
-				_typeByFullName.Add(name, t);
+				if ( !cache.ContainsKey(name) ) {
+					cache.Add(name, t);
+				}
 			}
+			_typeByFullName = cache;
 			return _typeByFullName;
+		}
+
+		static Type[] CollectTypes(IEnumerable<Assembly> assemblies) {
+			var result = new List<Type>();
+			foreach ( var assembly in assemblies ) {
+				Type[] types;
+				try {
+					types = assembly.GetTypes();
+				} catch ( ReflectionTypeLoadException e ) {
+					types = e.Types;
+				}
+				if ( types == null ) {
+					continue;
+				}
+				for ( var i = 0; i < types.Length; i++ ) {
+					var t = types[i];
+					if ( t != null ) {
+						result.Add(t);
+					}
+				}
+			}
+			return result.ToArray();
 		}
 
 		public static Type GetTypeByFullName(string name) {
