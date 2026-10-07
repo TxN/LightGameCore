@@ -74,10 +74,13 @@ namespace SMGCore {
 				Initialize();
 				var val = PlayerPrefs.GetString("Locale");
 				if ( string.IsNullOrEmpty(val) ) {
-					CurrentLanguage = FixLanguage(Application.systemLanguage);
+					var language = FixLanguage(Application.systemLanguage);
+					CurrentLanguage = language;
+					return language;
 				}
-				var result = SystemLanguage.English;
-				System.Enum.TryParse(val, out result);
+				if ( !System.Enum.TryParse(val, out SystemLanguage result) ) {
+					return DefaultLanguage;
+				}
 				return result;
 			}
 

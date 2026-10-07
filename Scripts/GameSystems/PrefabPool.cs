@@ -20,6 +20,7 @@ namespace SMGCore {
 		public virtual T Get() {
 			if ( _readyObjects.Count > 0 ) {
 				var item = _readyObjects.Dequeue();
+				item.IsInPool = false;
 				item.gameObject.SetActive(true);
 				return item;
 			}
@@ -27,8 +28,16 @@ namespace SMGCore {
 		}
 
 		public virtual void Return(T item) {
+			if ( !item || item.IsInPool ) {
+				return;
+			}
 			item.DeInit();
 			item.gameObject.SetActive(false);
+			// DeInit мог уже вернуть объект в пул.
+			if ( item.IsInPool ) {
+				return;
+			}
+			item.IsInPool = true;
 			_readyObjects.Enqueue(item);
 		}
 

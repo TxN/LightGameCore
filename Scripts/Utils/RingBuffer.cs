@@ -63,8 +63,7 @@ namespace RingBuffer {
 
 		public T PeekLast() {
 			if ( size == 0 ) throw new System.InvalidOperationException("Buffer is empty.");
-			T item = buffer[tail];
-			return item;
+			return buffer[(tail - 1 + Capacity) % Capacity];
 		}
 
 		public T PeekFirst() {
@@ -203,37 +202,28 @@ namespace RingBuffer {
         /// found or there was a problem removing it from the RingBuffer.
         /// </returns>
         public bool Remove(T item) {
-            int _index = head;
-            int _removeIndex = 0;
-            bool _foundItem = false;
-            EqualityComparer<T> _comparer = EqualityComparer<T>.Default;
-            for(int i = 0; i < size; i++, _index = (_index + 1) % Capacity) {
-                if(_comparer.Equals(item, buffer[_index])) {
-                    _removeIndex = _index;
-                    _foundItem = true;
+            if ( size == 0 ) {
+                return false;
+            }
+            EqualityComparer<T> comparer = EqualityComparer<T>.Default;
+            int index = head;
+            int found = -1;
+            for ( int i = 0; i < size; i++, index = (index + 1) % Capacity ) {
+                if ( comparer.Equals(item, buffer[index]) ) {
+                    found = i;
                     break;
                 }
             }
-            if(_foundItem) {
-                T[] _newBuffer = new T[size - 1];
-                _index = head;
-                bool _pastItem = false;
-                for(int i = 0; i < size - 1; i++, _index = (_index + 1) % Capacity) {
-                    if(_index == _removeIndex) {
-                        _pastItem = true;
-                    }
-                    if(_pastItem) {
-                        _newBuffer[_index] = buffer[(_index + 1) % Capacity];
-                    }
-                    else {
-                        _newBuffer[_index] = buffer[_index];
-                    }
-                }
-                size--;
-                buffer = _newBuffer;
-                return true;
+            if ( found < 0 ) {
+                return false;
             }
-            return false;
+            for ( int i = found; i < size - 1; i++ ) {
+                buffer[(head + i) % Capacity] = buffer[(head + i + 1) % Capacity];
+            }
+            buffer[(head + size - 1) % Capacity] = default(T);
+            size--;
+            tail = (head + size) % Capacity;
+            return true;
         }
         #endregion
 
