@@ -3,6 +3,8 @@ using UnityEngine;
 
 namespace SMGCore {
 	public abstract class PoolItem : MonoBehaviour, IPoolItem {
+		internal bool IsInPool;
+
 		public abstract void DeInit();
 	}
 }

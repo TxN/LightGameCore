@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml;
 
 namespace SMGCore.Utils.Xml {
@@ -30,7 +31,7 @@ namespace SMGCore.Utils.Xml {
 		}
 		
 		public static void AddAttrValue(this XmlElement elem, string name, float value) {
-			elem.AddAttrValue(name, value.ToString());
+			elem.AddAttrValue(name, value.ToString(CultureInfo.InvariantCulture));
 		}
 #if UNITY_2017_1_OR_NEWER
 		public static void AddAttrValue(this XmlElement elem, string name, UnityEngine.SystemLanguage value) {

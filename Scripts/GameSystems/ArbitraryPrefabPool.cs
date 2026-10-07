@@ -21,6 +21,7 @@ namespace SMGCore {
 		public override PoolItem GetGeneric() {
 			if ( _freeInstances.Count > 0 ) {
 				var item = _freeInstances.Dequeue();
+				item.IsInPool = false;
 				item.transform.SetParent(null);
 				item.gameObject.SetActive(true);
 				return item;
@@ -38,20 +39,26 @@ namespace SMGCore {
 		}
 
 		public override void ReturnGeneric(PoolItem item) {
-			if ( !item ) {
+			if ( !item || item.IsInPool ) {
 				return;
 			}
 			item.DeInit();
 			item.transform.SetParent(_itemHolder);
 			item.gameObject.SetActive(false);
+			// DeInit мог уже вернуть объект в пул.
+			if ( item.IsInPool ) {
+				return;
+			}
+			item.IsInPool = true;
 			_freeInstances.Enqueue(item);
 		}
 
 		void FillInstances(int initialCapacity) {
 			_freeInstances = new Queue<PoolItem>(initialCapacity);
 			for ( int i = 0; i < initialCapacity; i++ ) {
-				_freeInstances.Enqueue(CreateItem());
-				
+				var item = CreateItem();
+				item.IsInPool = true;
+				_freeInstances.Enqueue(item);
 			}
 		}
 
