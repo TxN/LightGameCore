@@ -33,6 +33,16 @@ namespace SMGCore {
 
 		public static bool LocaleLoadFailed { get; private set; }
 
+		/// <summary>
+		/// True when the loaded locale file declares itself unfinished: <c>&lt;root draft="true"&gt;</c>.
+		/// The UI uses it to warn the player that the translation is a work in progress. An absent
+		/// attribute means a final locale, so the files that predate the attribute need no edit.
+		/// </summary>
+		public static bool CurrentLocaleIsDraft { get; private set; }
+
+		/// <summary>Name of the attribute on the document root that marks a locale as unfinished.</summary>
+		public const string DraftAttribute = "draft";
+
 		public static bool IsHieroglyphicLanguage(SystemLanguage language) {
 			return language == SystemLanguage.Chinese || language == SystemLanguage.Japanese || language == SystemLanguage.Korean || language == SystemLanguage.ChineseSimplified || language == SystemLanguage.ChineseTraditional;
 		}
@@ -210,11 +220,12 @@ namespace SMGCore {
 		public void ChangeLanguage(SystemLanguage language) {
 			CurrentLanguage = language;
 			Load();
-			EventManager.Fire(new Event_LanguageChanged() { Language = language });
+			EventManager.Fire(new Event_LanguageChanged() { Language = language, IsDraft = CurrentLocaleIsDraft });
 		}
 
 		void Load() {
 			Initialize();
+			CurrentLocaleIsDraft = false;
 			if ( _currentLocale != null ) {
 				_currentLocale.Clear();
 			} else {
@@ -258,6 +269,10 @@ namespace SMGCore {
 			}
 
 			var root = loc.SelectSingleNode("root");
+			CurrentLocaleIsDraft = root != null && string.Equals(root.GetAttrValue(DraftAttribute, string.Empty), "true", System.StringComparison.OrdinalIgnoreCase);
+			if ( CurrentLocaleIsDraft ) {
+				Debug.LogWarningFormat("LocalizationController: Locale {0} is marked as a draft", CurrentLanguage);
+			}
 			foreach ( XmlNode item in root ) {
 				LoadTranslationNode(item, string.Empty, _currentLocale);
 			}
@@ -392,6 +407,7 @@ namespace SMGCore {
 		public float  Duration = 3f;
 	}
 
-	public struct Event_LanguageChanged { public SystemLanguage Language; }
+	/// <summary><see cref="IsDraft"/> mirrors <see cref="LocalizationController.CurrentLocaleIsDraft"/> for the new locale.</summary>
+	public struct Event_LanguageChanged { public SystemLanguage Language; public bool IsDraft; }
 }
 #endif
