@@ -26,6 +26,8 @@ namespace SMGCore {
 			SystemLanguage.Japanese,
 			SystemLanguage.Spanish,
 			SystemLanguage.German,
+			SystemLanguage.French,
+			SystemLanguage.Portuguese,
 		};
 		bool _isInitialized = false;
 
