@@ -24,6 +24,8 @@ namespace SMGCore {
 			SystemLanguage.Russian,
 			SystemLanguage.Chinese,
 			SystemLanguage.Japanese,
+			SystemLanguage.Spanish,
+			SystemLanguage.German,
 		};
 		bool _isInitialized = false;
 
