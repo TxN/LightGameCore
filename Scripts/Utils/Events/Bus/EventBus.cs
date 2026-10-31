@@ -7,7 +7,14 @@ namespace Utils {
 		public abstract void FixWatchers();
 		public abstract void CleanUp();
 
-		protected void TryRegister() =>	EventBusManager.Instance.TryRegister(this);
+		protected void TryRegister() {
+#if UNITY_EDITOR
+			if ( !UnityEngine.Application.isPlaying ) {
+				return;
+			}
+#endif
+			EventBusManager.Instance.TryRegister(this);
+		}
 
 		protected void TryUnregister() {
 			if ( Handler.Watchers.Count > 0 ) {
