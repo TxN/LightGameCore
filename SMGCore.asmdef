@@ -3,8 +3,7 @@
     "rootNamespace": "",
     "references": [
         "Unity.TextMeshPro",
-        "DOTween.Modules",
-        "Unity.InputSystem"
+        "DOTween.Modules"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

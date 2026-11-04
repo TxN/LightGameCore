@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SMGCore {
     public class OrbitCamera : MonoBehaviour {
@@ -185,14 +184,14 @@ namespace SMGCore {
         }
 
         private void UpdateTargetOffset() {
-            if (Keyboard.current[Key.LeftShift].isPressed || Keyboard.current[Key.RightShift].isPressed) {
-                if (Mouse.current.rightButton.wasPressedThisFrame) {
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) {
+                if (Input.GetMouseButtonDown(1)) {
                     _isAdjustingOffset = true;
                     _isRotating = false;
                 }
             }
             
-            if (Mouse.current.rightButton.wasReleasedThisFrame) {
+            if (Input.GetMouseButtonUp(1)) {
                 _isAdjustingOffset = false;
             }
 
@@ -202,8 +201,9 @@ namespace SMGCore {
                 Vector3 up = transform.up;
 
                 // Calculate offset based on mouse movement
-                float horizontalInput = Mouse.current.delta.x.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
-                float verticalInput = Mouse.current.delta.y.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                var mouseDelta = Input.mousePositionDelta;
+                float horizontalInput = mouseDelta.x * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                float verticalInput = mouseDelta.y * LookSensitivity * Time.unscaledDeltaTime * 2f;
 
                 // Apply the offset
                 _targetPointOffset += (right * horizontalInput + up * verticalInput) * Time.unscaledDeltaTime * 5f;
@@ -223,16 +223,16 @@ namespace SMGCore {
             float horizontalInput = 0f;
             float verticalInput = 0f;
 
-            if (Keyboard.current[Key.A].isPressed) {
+            if (Input.GetKey(KeyCode.A)) {
                 horizontalInput += 1f;
             }
-            if (Keyboard.current[Key.D].isPressed) {
+            if (Input.GetKey(KeyCode.D)) {
                 horizontalInput -= 1f;
             }
-            if (Keyboard.current[Key.W].isPressed) {
+            if (Input.GetKey(KeyCode.W)) {
                 verticalInput += 1f;
             }
-            if (Keyboard.current[Key.S].isPressed) {
+            if (Input.GetKey(KeyCode.S)) {
                 verticalInput -= 1f;
             }
 
@@ -256,19 +256,20 @@ namespace SMGCore {
 
             // Handle rotation with right mouse button
             if (!_isAdjustingOffset) {
-                if (Mouse.current.rightButton.wasPressedThisFrame) {
+                if (Input.GetMouseButtonDown(1)) {
                     _isRotating = true;
                     Cursor.visible = false;
                     Cursor.lockState = CursorLockMode.Locked;
-                } else if (Mouse.current.rightButton.wasReleasedThisFrame) {
+                } else if (Input.GetMouseButtonUp(1)) {
                     _isRotating = false;
                     Cursor.visible = true;
                     Cursor.lockState = CursorLockMode.None;
                 }
 
                 if (_isRotating) {
-                    _currentX += Mouse.current.delta.x.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
-                    _currentY -= Mouse.current.delta.y.ReadValue() * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                    var mouseDelta = Input.mousePositionDelta;
+                    _currentX += mouseDelta.x * LookSensitivity * Time.unscaledDeltaTime * 2f;
+                    _currentY -= mouseDelta.y * LookSensitivity * Time.unscaledDeltaTime * 2f;
                     _currentY = Mathf.Clamp(_currentY, -85f, 85f);
                 }
             }
@@ -288,7 +289,7 @@ namespace SMGCore {
             UpdateTargetOffset();
 
             // Handle zoom with mouse wheel
-            float scroll = Mouse.current.scroll.y.ReadValue();
+            float scroll = Input.mouseScrollDelta.y;
             Distance -= scroll * ZoomSensitivity;
             Distance = Mathf.Clamp(Distance, DistanceLimits.x, DistanceLimits.y);
 

@@ -1,6 +1,5 @@
 #if UNITY_2017_1_OR_NEWER
 using System.Collections.Generic;
-using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace SMGCore {
@@ -8,7 +7,6 @@ namespace SMGCore {
 		PoolItem  _prefab     = null;
 		Transform _itemHolder = null;
 
-		[ShowInInspector]
 		public int FreeInstancesCount => _freeInstances?.Count ?? 0;
 
 		Queue<PoolItem> _freeInstances;

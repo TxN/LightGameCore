@@ -1,6 +1,5 @@
 #if UNITY_2017_1_OR_NEWER
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SMGCore {
 	/// <summary>
@@ -154,7 +153,7 @@ namespace SMGCore {
 				_lastTargetTransformPosition = targetPosition;
 			}
 			
-			var fastMode = Keyboard.current[Key.LeftShift].isPressed || Keyboard.current[Key.RightShift].isPressed;
+			var fastMode = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 			var movementSpeed = fastMode ? this.fastMovementSpeed : this.movementSpeed;
 
 			// ---
@@ -162,32 +161,32 @@ namespace SMGCore {
 			// ---
 			var pos = _targetPosition; // begin with last frame's target
 
-			if ( Keyboard.current[Key.A].isPressed || Keyboard.current[Key.LeftArrow].isPressed ) {
+			if ( Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) ) {
 				pos += -transform.right * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.D].isPressed || Keyboard.current[Key.RightArrow].isPressed ) {
+			if ( Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ) {
 				pos += transform.right * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.W].isPressed || Keyboard.current[Key.UpArrow].isPressed ) {
+			if ( Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) ) {
 				pos += transform.forward * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.S].isPressed || Keyboard.current[Key.DownArrow].isPressed ) {
+			if ( Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ) {
 				pos += -transform.forward * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.Q].isPressed ) {
+			if ( Input.GetKey(KeyCode.Q) ) {
 				pos += transform.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.E].isPressed ) {
+			if ( Input.GetKey(KeyCode.E) ) {
 				pos += -transform.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.R].isPressed || Keyboard.current[Key.PageUp].isPressed ) {
+			if ( Input.GetKey(KeyCode.R) || Input.GetKey(KeyCode.PageUp) ) {
 				pos += Vector3.up * movementSpeed * Time.unscaledDeltaTime;
 			}
-			if ( Keyboard.current[Key.F].isPressed || Keyboard.current[Key.PageDown].isPressed ) {
+			if ( Input.GetKey(KeyCode.F) || Input.GetKey(KeyCode.PageDown) ) {
 				pos += -Vector3.up * movementSpeed * Time.unscaledDeltaTime;
 			}
 
-			float scrollAxis = Mouse.current.scroll.y.ReadValue();
+			float scrollAxis = Input.mouseScrollDelta.y;
 			if (scrollAxis != 0) {
 				var zSens = fastMode ? fastZoomSensitivity : zoomSensitivity;
 				pos += transform.forward * scrollAxis * zSens;
@@ -199,15 +198,16 @@ namespace SMGCore {
 			// HANDLE ROTATION
 			// ---
 			if ( looking ) {
-				_yaw += Mouse.current.delta.x.ReadValue() * freeLookSensitivity * Time.unscaledDeltaTime * 2f;
-				_pitch -= Mouse.current.delta.y.ReadValue() * freeLookSensitivity * Time.unscaledDeltaTime * 2f;
+				var mouseDelta = Input.mousePositionDelta;
+				_yaw += mouseDelta.x * freeLookSensitivity * Time.unscaledDeltaTime * 2f;
+				_pitch -= mouseDelta.y * freeLookSensitivity * Time.unscaledDeltaTime * 2f;
 			}
 			_targetRotation = Quaternion.Euler(_pitch, _yaw, 0f);
 
-			if ( Mouse.current.rightButton.wasPressedThisFrame ) {
+			if ( Input.GetMouseButtonDown(1) ) {
 				StartLooking();
 			}
-			else if ( Mouse.current.rightButton.wasReleasedThisFrame ) {
+			else if ( Input.GetMouseButtonUp(1) ) {
 				StopLooking();
 			}
 
