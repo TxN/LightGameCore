@@ -180,11 +180,21 @@ namespace SMGCore.Utils {
 				return cachedFields;
 			}
 
-			var fields = objectType
-				.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-				.Where(field => Attribute.IsDefined(field, attributeType))
-				.ToArray();
+			var result = new List<FieldInfo>();
+			var seenFields = new HashSet<FieldInfo>();
+			var baseTypes = GetAllBaseTypesIncludingSelf(objectType);
+			const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly;
+			for ( int i = 0; i < baseTypes.Count; i++ ) {
+				var typeFields = baseTypes[i].GetFields(flags);
+				for ( int j = 0; j < typeFields.Length; j++ ) {
+					var field = typeFields[j];
+					if ( Attribute.IsDefined(field, attributeType) && seenFields.Add(field) ) {
+						result.Add(field);
+					}
+				}
+			}
 
+			var fields = result.ToArray();
 			_fieldsWithAttributeCache[cacheKey] = fields;
 			return fields;
 		}
