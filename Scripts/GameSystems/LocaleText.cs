@@ -61,18 +61,19 @@ namespace SMGCore {
 			if ( string.IsNullOrEmpty(Id) ) {
 				return;
 			}
-			var currentLanguage = LocalizationController.Instance.CurrentLanguage;
+			var loadedLanguage = LocalizationController.LoadedLanguage;
+			var translated = LocalizationController.Trans(Id);
 			if ( _tmpComponent ) {
-				_tmpComponent.SetText(LocalizationController.Instance.Translate(Id));
-				_tmpComponent.ForceMeshUpdate();
-				if ( LocalizationController.IsHieroglyphicLanguage(currentLanguage) ) {
+				_tmpComponent.SetText(translated);
+				if ( LocalizationController.IsHieroglyphicLanguage(loadedLanguage) ) {
 					_tmpComponent.characterSpacing = Mathf.Max(_defaultSymbolSpacing, IncreasedSymbolSpacing);
 				} else {
 					_tmpComponent.characterSpacing = _defaultSymbolSpacing;
 				}
+				_tmpComponent.ForceMeshUpdate();
 			}
 			if ( _textComponent ) {
-				_textComponent.text = LocalizationController.Instance.Translate(Id);
+				_textComponent.text = translated;
 			}
 			if ( ForceRebuildLayout && _rectTransform ) {
 				LayoutRebuilder.ForceRebuildLayoutImmediate(_rectTransform);
@@ -83,17 +84,21 @@ namespace SMGCore {
 			Id = id;
 			if ( string.IsNullOrEmpty(id) ) {
 				if ( _tmpComponent ) {
-					_tmpComponent.text = LocalizationController.Instance.Translate(Id);
+					_tmpComponent.text = string.Empty;
 					_tmpComponent.characterSpacing = _defaultSymbolSpacing;
 				}
 				if ( _textComponent ) {
-					_textComponent.text = LocalizationController.Instance.Translate(Id);
+					_textComponent.text = string.Empty;
+				}
+				if ( ForceRebuildLayout && _rectTransform ) {
+					LayoutRebuilder.ForceRebuildLayoutImmediate(_rectTransform);
 				}
 			} else {
 				UpdateText();
 			}
 		}
 
+#if UNITY_EDITOR
 #if ODIN_INSPECTOR
 		[Sirenix.OdinInspector.Button]
 #endif
@@ -110,7 +115,7 @@ namespace SMGCore {
 			if ( newText == null ) {
 				return;
 			}
-			LocalizationController.UpdateEntry(Id, newText, EditorLanguage, true);
+			LocalizationXmlUtility.UpdateEntry(Id, newText, EditorLanguage, true);
 			Debug.Log("Updated");
 		}
 
@@ -118,7 +123,7 @@ namespace SMGCore {
 		[Sirenix.OdinInspector.Button]
 #endif
 		public void LoadValueFromLocFile() {
-			var text = LocalizationController.GetEntryFromFile(Id, EditorLanguage);
+			var text = LocalizationXmlUtility.GetEntryFromFile(Id, EditorLanguage);
 			if ( string.IsNullOrEmpty(text) ) {
 				return;
 			}
@@ -131,6 +136,7 @@ namespace SMGCore {
 				textComponent.text = text;
 			}
 		}
+#endif
 		
 	}
 }

@@ -1,414 +1,598 @@
 #if UNITY_2017_1_OR_NEWER
+using System;
 using System.Collections.Generic;
-using System.Xml;
+using System.IO;
+using System.Runtime.CompilerServices;
 
 using UnityEngine;
 
 using SMGCore.EventSys;
-using SMGCore.Utils.Xml;
-using System.IO;
-using System.Linq;
+
+#if UNITY_EDITOR
+[assembly: InternalsVisibleTo("SMGCore.Localization.Tests")]
+#endif
 
 namespace SMGCore {
-	public sealed class LocalizationController : MonoSingleton<LocalizationController> {
+	public static class LocalizationController {
+		public const string LocFileFormatPath   = "Configs/Locale_{0}";
+		public const string StreamingAssetsPath = "Configs/";
+		public const string EmptyLocString      = LocalizationTable.EmptyLocString;
+		public const string DraftAttribute      = LocalizationTable.DraftAttribute;
 
-		public const SystemLanguage DefaultLanguage   = SystemLanguage.English;
-		public const string         LocFileFormatPath = "Configs/Locale_{0}";
-		public const string 		StreamingAssetsPath = "Configs/";
-		public const string         EmptyLocString    = "!{0}!";
+		const string LocalePrefsKey = "Locale";
 
-		Dictionary<string, TranslationNode> _currentLocale = new Dictionary<string, TranslationNode>();
+		static readonly LocalizationTable _baseTable = new LocalizationTable();
+		static readonly Dictionary<string, string> _dynamicEntries = new Dictionary<string, string>(StringComparer.Ordinal);
+		static readonly List<SystemLanguage> _streamingAssetsLanguages = new List<SystemLanguage>();
+		static readonly List<SystemLanguage> _supportedLanguagesCache = new List<SystemLanguage>();
 
-		public static readonly List<SystemLanguage> SupportedLanguages = new List<SystemLanguage> {
-			SystemLanguage.English,
-			SystemLanguage.Russian,
-			SystemLanguage.Chinese,
-			SystemLanguage.Japanese,
-			SystemLanguage.Spanish,
-			SystemLanguage.German,
-			SystemLanguage.French,
-			SystemLanguage.Portuguese,
-		};
-		bool _isInitialized = false;
+		static LocalizationConfig _config;
+		static LocalizationConfig _overrideConfig;
+		static bool _environmentInitialized;
+		static bool _languageResolved;
+		static bool _isLocaleLoaded;
+		static SystemLanguage _currentLanguage = LocalizationConfig.FallbackDefaultLanguage;
+		static SystemLanguage _loadedLanguage = LocalizationConfig.FallbackDefaultLanguage;
+		static bool _localeLoadFailed;
+		static bool _currentLocaleIsDraft;
 
-		Dictionary<string, SystemLanguage> _allLanguages = new Dictionary<string, SystemLanguage>();
+#if UNITY_EDITOR
+		static DateTime _cachedConfigFileWriteUtc = DateTime.MinValue;
 
-		List<SystemLanguage> _streamingAssetsLanguages = new List<SystemLanguage>();
+		internal static Func<SystemLanguage, string> ResourceXmlLoaderOverride;
+		internal static Func<SystemLanguage, string> StreamingXmlLoaderOverride;
+		internal static Action<List<SystemLanguage>> StreamingScannerOverride;
+#endif
 
-		public static bool LocaleLoadFailed { get; private set; }
+		public static SystemLanguage DefaultLanguage {
+			get {
+				EnsureConfigLoaded();
+				return _config.DefaultLanguage;
+			}
+		}
+
+		public static IReadOnlyList<SystemLanguage> SupportedLanguages {
+			get {
+				EnsureConfigLoaded();
+				return _config.SupportedLanguages;
+			}
+		}
+
+		public static SystemLanguage CurrentLanguage {
+			get {
+				EnsureInitialized();
+				return _currentLanguage;
+			}
+		}
+
+		public static SystemLanguage LoadedLanguage {
+			get {
+				EnsureLocaleLoaded();
+				return _loadedLanguage;
+			}
+		}
+
+		public static bool LocaleLoadFailed {
+			get {
+				EnsureLocaleLoaded();
+				return _localeLoadFailed;
+			}
+		}
 
 		/// <summary>
 		/// True when the loaded locale file declares itself unfinished: <c>&lt;root draft="true"&gt;</c>.
 		/// The UI uses it to warn the player that the translation is a work in progress. An absent
 		/// attribute means a final locale, so the files that predate the attribute need no edit.
 		/// </summary>
-		public static bool CurrentLocaleIsDraft { get; private set; }
+		public static bool CurrentLocaleIsDraft {
+			get {
+				EnsureLocaleLoaded();
+				return _currentLocaleIsDraft;
+			}
+		}
 
-		/// <summary>Name of the attribute on the document root that marks a locale as unfinished.</summary>
-		public const string DraftAttribute = "draft";
+#if UNITY_EDITOR
+		[UnityEditor.InitializeOnLoadMethod]
+		static void InitEditorHooks() {
+			UnityEditor.EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+			UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+		}
+
+		static void OnPlayModeStateChanged(UnityEditor.PlayModeStateChange change) {
+			if ( change == UnityEditor.PlayModeStateChange.ExitingEditMode ||
+			     change == UnityEditor.PlayModeStateChange.EnteredEditMode ) {
+				Reset();
+				LocalizationXmlUtility.ClearEditorCache();
+			}
+		}
+#endif
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		static void InitRuntimeState() {
+#if !UNITY_EDITOR
+			Reset();
+#endif
+		}
+
+		public static void Reset() {
+			_config = null;
+			_overrideConfig = null;
+			_environmentInitialized = false;
+			_languageResolved = false;
+			_isLocaleLoaded = false;
+			_currentLanguage = LocalizationConfig.FallbackDefaultLanguage;
+			_loadedLanguage = LocalizationConfig.FallbackDefaultLanguage;
+			_baseTable.Clear();
+			_dynamicEntries.Clear();
+			_streamingAssetsLanguages.Clear();
+			_supportedLanguagesCache.Clear();
+			_localeLoadFailed = false;
+			_currentLocaleIsDraft = false;
+#if UNITY_EDITOR
+			_cachedConfigFileWriteUtc = DateTime.MinValue;
+			ResourceXmlLoaderOverride = null;
+			StreamingXmlLoaderOverride = null;
+			StreamingScannerOverride = null;
+#endif
+		}
+
+		public static void Configure(LocalizationConfig config) {
+			_overrideConfig = config;
+			_config = config;
+			_environmentInitialized = false;
+			_languageResolved = false;
+			_isLocaleLoaded = false;
+			_baseTable.Clear();
+			_streamingAssetsLanguages.Clear();
+			_supportedLanguagesCache.Clear();
+			_localeLoadFailed = false;
+			_currentLocaleIsDraft = false;
+#if UNITY_EDITOR
+			_cachedConfigFileWriteUtc = DateTime.MinValue;
+#endif
+		}
 
 		public static bool IsHieroglyphicLanguage(SystemLanguage language) {
-			return language == SystemLanguage.Chinese || language == SystemLanguage.Japanese || language == SystemLanguage.Korean || language == SystemLanguage.ChineseSimplified || language == SystemLanguage.ChineseTraditional;
+			return language == SystemLanguage.Chinese ||
+			       language == SystemLanguage.Japanese ||
+			       language == SystemLanguage.Korean ||
+			       language == SystemLanguage.ChineseSimplified ||
+			       language == SystemLanguage.ChineseTraditional;
 		}
 
-		public HashSet<char> GetAllSymbolsFromCurrentLocale() {
-			var symbols = new HashSet<char>();
-			foreach ( var kv in _currentLocale ) {
-				if ( string.IsNullOrEmpty(kv.Value.Text) ) {
-					continue;
-				}
-				foreach ( var c in kv.Value.Text ) {
-					symbols.Add(c);
-				}
-			}
-			return symbols;
+		public static void Initialize() {
+			EnsureLocaleLoaded();
 		}
 
-		SystemLanguage FixLanguage(SystemLanguage lang) {
-			if ( _streamingAssetsLanguages.Contains(lang) ) {
-				return lang;
-			}
-			return SupportedLanguages.Contains(lang) ? lang : DefaultLanguage;
+		public static IReadOnlyList<SystemLanguage> GetSupportedLanguages() {
+			EnsureEnvironmentInitialized();
+			return _supportedLanguagesCache;
 		}
 
 		public static string Trans(string id) {
-			return Instance.Translate(id);
+			if ( string.IsNullOrEmpty(id) ) {
+				return string.Empty;
+			}
+			EnsureLocaleLoaded();
+			if ( _dynamicEntries.TryGetValue(id, out var dynamicText) ) {
+				return dynamicText;
+			}
+			return _baseTable.GetOrMissing(id);
 		}
 
-		public static string TransFormat(string id, params string[] args) {
-			return Instance.TranslateFormat(id, args);
+		public static bool TryTrans(string id, out string text) {
+			if ( string.IsNullOrEmpty(id) ) {
+				text = null;
+				return false;
+			}
+			EnsureLocaleLoaded();
+			if ( _dynamicEntries.TryGetValue(id, out text) ) {
+				return true;
+			}
+			if ( _baseTable.TryGet(id, out text) && !string.IsNullOrEmpty(text) ) {
+				return true;
+			}
+			text = null;
+			return false;
 		}
 
 		public static bool CanTrans(string id) {
-			return Instance.CanTranslate(id);
-		}
-
-		public SystemLanguage CurrentLanguage {
-			get {
-				Initialize();
-				var val = PlayerPrefs.GetString("Locale");
-				if ( string.IsNullOrEmpty(val) ) {
-					var language = FixLanguage(Application.systemLanguage);
-					CurrentLanguage = language;
-					return language;
-				}
-				if ( !System.Enum.TryParse(val, out SystemLanguage result) ) {
-					return DefaultLanguage;
-				}
-				return result;
-			}
-
-			private set {
-				PlayerPrefs.SetString("Locale", value.ToString());
-			}
-		}
-
-		protected override void Awake() {
-			base.Awake();
-			if ( _instance != this ) {
-				Debug.LogWarning($"Singleton {GetType().Name}, duplicate instance found");
-				return;
-			}
-			Initialize();
-			Load();
-			DontDestroyOnLoad(gameObject);
-		}
-
-		public void Initialize() {
-			if ( _isInitialized ) {
-				return;
-			}
-			_isInitialized = true;
-			_allLanguages.Clear();
-			foreach ( var lang in System.Enum.GetValues(typeof(SystemLanguage)) ) {
-				if ( !_allLanguages.ContainsKey(lang.ToString()) ) {
-					_allLanguages.Add(lang.ToString(), (SystemLanguage)lang);
-				}
-			}
-			var streamingAssetsLocalePath = Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath);
-			if ( !Directory.Exists(streamingAssetsLocalePath) ) {
-				return;
-			}
-			var files = GetAllLanguageFilesFromStreamingAssets();
-			foreach ( var file in files ) {
-				var lang = file.Substring(file.LastIndexOf('_') + 1, file.LastIndexOf('.') - file.LastIndexOf('_') - 1);
-				if ( _allLanguages.ContainsKey(lang) ) {
-					Debug.LogFormat("LocalizationController: Found language file {0}", lang);
-					_streamingAssetsLanguages.Add(_allLanguages[lang]);
-				} else {
-					Debug.LogWarningFormat("LocalizationController: Found language file {0} but it is not supported", lang);
-				}
-			}
-		}
-
-		List<string> GetAllLanguageFilesFromStreamingAssets() {
-			var files = Directory.GetFiles(Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath), "Locale_*.xml", SearchOption.TopDirectoryOnly);
-			return files.ToList();
-		}
-
-		public List<SystemLanguage> GetSupportedLanguages() {
-			Initialize();
-			var result = new List<SystemLanguage>();
-			foreach ( var lang in SupportedLanguages ) {
-				result.Add(lang);
-			}
-			foreach ( var lang in _streamingAssetsLanguages ) {
-				if ( !result.Contains(lang) ) {
-					result.Add(lang);
-				}
-			}
-			return result;
-		}
-
-		public string Translate(string id) {
-			_currentLocale.TryGetValue(id, out TranslationNode result);
-			if ( result == null ) {
-				return string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1));
-			}
-
-			return string.IsNullOrEmpty(result.Text) ? string.Format(EmptyLocString, id.Substring(id.LastIndexOf('.') + 1)) : result.Text;
-		}
-
-		public List<string> GetChildIds(string startsWith) {
-			var list = new List<string>();
-
-			foreach ( var kv in _currentLocale ) {
-				if ( kv.Key.StartsWith(startsWith) ) {
-					list.Add(kv.Key);
-				}
-			}
-
-			return list;
-		}
-
-		public bool CanTranslate(string id) {
 			if ( string.IsNullOrEmpty(id) ) {
 				return false;
 			}
-			return _currentLocale.ContainsKey(id);
+			EnsureLocaleLoaded();
+			return _dynamicEntries.ContainsKey(id) || _baseTable.ContainsKey(id);
 		}
 
-		public string TranslateFormat(string id, params string[] args) {
-			var str = Translate(id);
-			return string.Format(str, args);
+		public static string TransFormat(string id, string arg0) {
+			var str = Trans(id);
+			try {
+				return string.Format(str, arg0);
+			} catch ( FormatException e ) {
+				LogFormatError(id, e);
+				return str;
+			}
 		}
 
-		public TranslationNode GetTranslationNode(string id) {
-			_currentLocale.TryGetValue(id, out TranslationNode result);
-			return result;
+		public static string TransFormat(string id, string arg0, string arg1) {
+			var str = Trans(id);
+			try {
+				return string.Format(str, arg0, arg1);
+			} catch ( FormatException e ) {
+				LogFormatError(id, e);
+				return str;
+			}
 		}
 
-		public void AddDynamicTranslation(string id, string text, bool overwrite = false) {
+		public static string TransFormat(string id, string arg0, string arg1, string arg2) {
+			var str = Trans(id);
+			try {
+				return string.Format(str, arg0, arg1, arg2);
+			} catch ( FormatException e ) {
+				LogFormatError(id, e);
+				return str;
+			}
+		}
+
+		public static string TransFormat(string id, params string[] args) {
+			var str = Trans(id);
+			if ( args == null || args.Length == 0 ) {
+				return str;
+			}
+			try {
+				return string.Format(str, args);
+			} catch ( FormatException e ) {
+				LogFormatError(id, e);
+				return str;
+			}
+		}
+
+		public static void GetChildIds(string startsWith, List<string> output) {
+			if ( output == null ) {
+				return;
+			}
+			EnsureLocaleLoaded();
+			_baseTable.GetChildIds(startsWith, output);
+			if ( _dynamicEntries.Count == 0 ) {
+				return;
+			}
+			var prefix = startsWith ?? string.Empty;
+			foreach ( var kv in _dynamicEntries ) {
+				if ( kv.Key.StartsWith(prefix, StringComparison.Ordinal) && !_baseTable.ContainsKey(kv.Key) ) {
+					output.Add(kv.Key);
+				}
+			}
+		}
+
+		public static List<string> GetChildIds(string startsWith) {
+			var list = new List<string>();
+			GetChildIds(startsWith, list);
+			return list;
+		}
+
+		public static void CollectSymbolsFromCurrentLocale(HashSet<char> output) {
+			if ( output == null ) {
+				return;
+			}
+			EnsureLocaleLoaded();
+			_baseTable.CollectSymbols(output);
+			if ( _dynamicEntries.Count == 0 ) {
+				return;
+			}
+			foreach ( var kv in _dynamicEntries ) {
+				var text = kv.Value;
+				if ( string.IsNullOrEmpty(text) ) {
+					continue;
+				}
+				for ( var i = 0; i < text.Length; i++ ) {
+					output.Add(text[i]);
+				}
+			}
+		}
+
+		public static HashSet<char> GetAllSymbolsFromCurrentLocale() {
+			var symbols = new HashSet<char>();
+			CollectSymbolsFromCurrentLocale(symbols);
+			return symbols;
+		}
+
+		public static void AddDynamicTranslation(string id, string text, bool overwrite = false) {
 			if ( string.IsNullOrEmpty(id) ) {
 				Debug.LogError("LocalizationController.AddDynamicTranslation: id is null or empty");
 				return;
 			}
-			if ( !overwrite && _currentLocale.ContainsKey(id) ) {
+			if ( string.IsNullOrEmpty(text) ) {
+				if ( overwrite ) {
+					_dynamicEntries.Remove(id);
+				}
 				return;
 			}
-			_currentLocale[id] = new TranslationNode { Path = id, Text = text ?? string.Empty };
+			if ( !overwrite && _dynamicEntries.ContainsKey(id) ) {
+				return;
+			}
+			_dynamicEntries[id] = text;
 		}
 
-		public void RemoveDynamicTranslation(string id) {
+		public static void RemoveDynamicTranslation(string id) {
 			if ( string.IsNullOrEmpty(id) ) {
 				return;
 			}
-			_currentLocale.Remove(id);
+			_dynamicEntries.Remove(id);
 		}
 
-		public TranslationNode GetSameLevelNode(string sourceId, string targetName) {
-			var basePath = sourceId.Substring(0, sourceId.LastIndexOf('.'));
-			return GetTranslationNode($"{basePath}.{targetName}");
+		public static void ClearDynamicTranslations() {
+			_dynamicEntries.Clear();
 		}
 
-		public void ChangeLanguage(SystemLanguage language) {
-			CurrentLanguage = language;
-			Load();
-			EventManager.Fire(new Event_LanguageChanged() { Language = language, IsDraft = CurrentLocaleIsDraft });
+		public static void ChangeLanguage(SystemLanguage language) {
+			EnsureEnvironmentInitialized();
+			var resolved = FixLanguage(language);
+			_currentLanguage = resolved;
+			_languageResolved = true;
+			SaveLanguagePref(resolved);
+			Load(resolved);
+			EventManager.Fire(new Event_LanguageChanged { Language = _loadedLanguage, IsDraft = _currentLocaleIsDraft });
 		}
 
-		void Load() {
-			Initialize();
-			CurrentLocaleIsDraft = false;
-			if ( _currentLocale != null ) {
-				_currentLocale.Clear();
+		public static void Reload() {
+			EnsureConfigLoaded();
+			_environmentInitialized = true;
+			ScanStreamingAssetsLanguages();
+			RebuildSupportedLanguagesCache();
+			if ( !_languageResolved ) {
+				ResolveInitialLanguage();
 			} else {
-				_currentLocale = new Dictionary<string, TranslationNode>();
+				_currentLanguage = FixLanguage(_currentLanguage);
 			}
-			var hasStreamingAssetsLanguage = _streamingAssetsLanguages.Contains(CurrentLanguage);
-			XmlDocument loc;
-			if ( hasStreamingAssetsLanguage ) {
-				loc = XmlUtils.LoadXmlDocumentFromStreamingAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+			Load(_currentLanguage);
+			EventManager.Fire(new Event_LanguageChanged { Language = _loadedLanguage, IsDraft = _currentLocaleIsDraft });
+		}
+
+		static void EnsureConfigLoaded() {
+			if ( _overrideConfig != null ) {
+				_config = _overrideConfig;
+				return;
+			}
+
+#if UNITY_EDITOR
+			if ( _config != null && !Application.isPlaying ) {
+				var assetPath = "Assets/Resources/" + LocalizationConfig.DefaultConfigResourcePath + ".xml";
+				var currentWriteUtc = File.Exists(assetPath) ? File.GetLastWriteTimeUtc(assetPath) : DateTime.MinValue;
+				if ( currentWriteUtc != _cachedConfigFileWriteUtc ) {
+					_config = null;
+					_environmentInitialized = false;
+				}
+			}
+#endif
+
+			if ( _config != null ) {
+				return;
+			}
+
+#if UNITY_EDITOR
+			var configAssetPath = "Assets/Resources/" + LocalizationConfig.DefaultConfigResourcePath + ".xml";
+			_cachedConfigFileWriteUtc = File.Exists(configAssetPath) ? File.GetLastWriteTimeUtc(configAssetPath) : DateTime.MinValue;
+#endif
+
+			var asset = Resources.Load<TextAsset>(LocalizationConfig.DefaultConfigResourcePath);
+			if ( asset ) {
+				var xmlText = asset.text;
+				Resources.UnloadAsset(asset);
+				_config = LocalizationConfig.ParseXml(xmlText, out var parsedOk);
+				if ( !parsedOk ) {
+					Debug.LogWarningFormat("LocalizationController: Failed to parse '{0}', using fallback config.", LocalizationConfig.DefaultConfigResourcePath);
+				}
 			} else {
-				loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+				Debug.LogWarningFormat("LocalizationController: Config '{0}' not found in Resources. Using fallback language '{1}'.", LocalizationConfig.DefaultConfigResourcePath, LocalizationConfig.FallbackDefaultLanguage);
+				_config = LocalizationConfig.CreateFallback();
 			}
-			
-			if ( loc == null ) {				
-				//Пробуем второй раз загрузить локаль (по какой-то неведомой причине, иногда с первого раза локали могут не подтянуться)
-				if ( hasStreamingAssetsLanguage ) {
-					loc = XmlUtils.LoadXmlDocumentFromStreamingAssets(string.Format(LocFileFormatPath, CurrentLanguage));
-					if ( loc == null ) {
-						Debug.LogErrorFormat("LocalizationController: Cannnot load locale {0} from streaming assets. Trying to fallback to resources", CurrentLanguage);
-						if ( SupportedLanguages.Contains(CurrentLanguage)) {
-							loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
-						}
+		}
+
+		static void EnsureEnvironmentInitialized() {
+			EnsureConfigLoaded();
+			if ( _environmentInitialized ) {
+				return;
+			}
+			_environmentInitialized = true;
+
+			ScanStreamingAssetsLanguages();
+			RebuildSupportedLanguagesCache();
+		}
+
+		static void EnsureInitialized() {
+			EnsureEnvironmentInitialized();
+			if ( _languageResolved ) {
+				return;
+			}
+			ResolveInitialLanguage();
+		}
+
+		static void EnsureLocaleLoaded() {
+			if ( _isLocaleLoaded ) {
+				return;
+			}
+			EnsureInitialized();
+			Load(_currentLanguage);
+		}
+
+		static void ScanStreamingAssetsLanguages() {
+			_streamingAssetsLanguages.Clear();
+#if UNITY_EDITOR
+			if ( StreamingScannerOverride != null ) {
+				StreamingScannerOverride(_streamingAssetsLanguages);
+				return;
+			}
+#endif
+			try {
+				var streamingAssetsLocalePath = Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath);
+				if ( string.IsNullOrEmpty(streamingAssetsLocalePath) || !Directory.Exists(streamingAssetsLocalePath) ) {
+					return;
+				}
+				var files = Directory.GetFiles(streamingAssetsLocalePath, "Locale_*.xml", SearchOption.TopDirectoryOnly);
+				for ( var i = 0; i < files.Length; i++ ) {
+					var fileName = Path.GetFileNameWithoutExtension(files[i]);
+					if ( string.IsNullOrEmpty(fileName) || !fileName.StartsWith("Locale_", StringComparison.Ordinal) ) {
+						continue;
 					}
-				} else {
-					loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, CurrentLanguage));
+					var langName = fileName.Substring("Locale_".Length);
+					if ( LocalizationConfig.TryParseLanguage(langName, out var parsed) ) {
+						if ( !_streamingAssetsLanguages.Contains(parsed) ) {
+							Debug.LogFormat("LocalizationController: Found language file {0}", langName);
+							_streamingAssetsLanguages.Add(parsed);
+						}
+					} else {
+						Debug.LogWarningFormat("LocalizationController: Found language file {0} but it is not supported", langName);
+					}
 				}
-				
-				if ( loc == null ) {
-					//Пробуем на худой конец подтянуть резервную
-					loc = XmlUtils.LoadXmlDocumentFromAssets(string.Format(LocFileFormatPath, DefaultLanguage));
-					Debug.LogWarningFormat("LocalizationController: Cannnot load locale {0}", CurrentLanguage);
-					LocaleLoadFailed = true;
-				} else {
-					Debug.LogWarningFormat("LocalizationController: Locale {0} loaded after second attempt", CurrentLanguage);
-				}				
+			} catch ( Exception e ) {
+				Debug.LogWarningFormat("LocalizationController: Failed to scan StreamingAssets locales: {0}", e.Message);
 			}
-			if ( loc == null ) {
-				LocaleLoadFailed = true;
-				Debug.LogError("LocalizationController: Cannnot load default locale.");
+		}
+
+		static void RebuildSupportedLanguagesCache() {
+			_supportedLanguagesCache.Clear();
+			var builtIn = _config.SupportedLanguages;
+			for ( var i = 0; i < builtIn.Count; i++ ) {
+				if ( !_supportedLanguagesCache.Contains(builtIn[i]) ) {
+					_supportedLanguagesCache.Add(builtIn[i]);
+				}
+			}
+			for ( var i = 0; i < _streamingAssetsLanguages.Count; i++ ) {
+				if ( !_supportedLanguagesCache.Contains(_streamingAssetsLanguages[i]) ) {
+					_supportedLanguagesCache.Add(_streamingAssetsLanguages[i]);
+				}
+			}
+		}
+
+		static void ResolveInitialLanguage() {
+			_languageResolved = true;
+			var saved = PlayerPrefs.GetString(LocalePrefsKey);
+			if ( string.IsNullOrEmpty(saved) ) {
+				_currentLanguage = FixLanguage(Application.systemLanguage);
+				SaveLanguagePref(_currentLanguage);
+				return;
+			}
+			if ( LocalizationConfig.TryParseLanguage(saved, out var parsed) ) {
+				_currentLanguage = FixLanguage(parsed);
+				return;
+			}
+			_currentLanguage = _config.DefaultLanguage;
+		}
+
+		static SystemLanguage FixLanguage(SystemLanguage lang) {
+			if ( _streamingAssetsLanguages.Contains(lang) || _config.ContainsSupportedLanguage(lang) ) {
+				return lang;
+			}
+			var normalized = _config.NormalizeAlias(lang);
+			if ( _streamingAssetsLanguages.Contains(normalized) || _config.ContainsSupportedLanguage(normalized) ) {
+				return normalized;
+			}
+			return _config.DefaultLanguage;
+		}
+
+		static void SaveLanguagePref(SystemLanguage language) {
+			PlayerPrefs.SetString(LocalePrefsKey, language.ToString());
+			PlayerPrefs.Save();
+		}
+
+		static void Load(SystemLanguage targetLanguage) {
+			_isLocaleLoaded = true;
+			_baseTable.Clear();
+			_currentLocaleIsDraft = false;
+
+			if ( TryLoadLocaleTable(targetLanguage, out var isDraft) ) {
+				_loadedLanguage = targetLanguage;
+				_currentLocaleIsDraft = isDraft;
+				_localeLoadFailed = false;
+				if ( _currentLocaleIsDraft ) {
+					Debug.LogWarningFormat("LocalizationController: Locale {0} is marked as a draft", _loadedLanguage);
+				}
+				Debug.LogFormat("Locale load finished ({0}). Loaded {1} elements.", _loadedLanguage, _baseTable.Count);
 				return;
 			}
 
-			var root = loc.SelectSingleNode("root");
-			CurrentLocaleIsDraft = root != null && string.Equals(root.GetAttrValue(DraftAttribute, string.Empty), "true", System.StringComparison.OrdinalIgnoreCase);
-			if ( CurrentLocaleIsDraft ) {
-				Debug.LogWarningFormat("LocalizationController: Locale {0} is marked as a draft", CurrentLanguage);
-			}
-			foreach ( XmlNode item in root ) {
-				LoadTranslationNode(item, string.Empty, _currentLocale);
-			}
-			Debug.LogFormat("Locale load finished. Loaded {0} elements.", _currentLocale.Count);
-			LocaleLoadFailed = false;
-		}
-
-		static void LoadTranslationNode(XmlNode node, string prefix, IDictionary<string, TranslationNode> dict) {
-			var text = node.GetAttrValue("text", string.Empty);
-			var new_prefix = string.IsNullOrEmpty(prefix)
-				? node.Name
-				: string.Format("{0}.{1}", prefix, node.Name);
-			if ( !string.IsNullOrEmpty(text) ) {
-				var n = LoadNode(node, new_prefix);
-				if ( !dict.ContainsKey(new_prefix) ) {
-					dict.Add(new_prefix, n);
-				} else {
-					dict[new_prefix] = n;
-					Debug.LogErrorFormat("Duplicate entries in loc file for '{0}'", new_prefix);
-				}
-			}
-			foreach ( XmlNode child in node ) {
-				LoadTranslationNode(child, new_prefix, dict);
-			}
-		}
-
-		static TranslationNode LoadNode(XmlNode node, string path) {
-			var n = new TranslationNode {
-				Path = path,
-				Text = node.GetAttrValue("text", string.Empty),
-				Duration = node.GetAttrValue("duration", 0f),
-				NextLine = node.GetAttrValue("next", null)
-			};
-			return n;
-		}
-
-		public static void CreateNewLocaleEntry(string path, string value, XmlDocument loc) {
-			if (string.IsNullOrEmpty(path) || loc == null) {
-				Debug.LogError("LocalizationController.CreateNewLocaleEntry: path or document is null");
-				return;
-			}
-
-			if (!path.StartsWith("root.")) {
-				path = "root." + path;
-			}
-
-			// Проверяем, существует ли уже такая нода
-			var existingNode = loc.SelectSingleNode(path.Replace('.', '/'));
-			if (existingNode != null) {
-				Debug.LogWarning($"LocalizationController.CreateNewLocaleEntry: node {path} already exists, updating value");
-				var attr = existingNode.Attributes["text"];
-				if (attr != null) {
-					attr.Value = value;
+			_localeLoadFailed = true;
+			var fallback = _config.DefaultLanguage;
+			if ( targetLanguage != fallback ) {
+				Debug.LogWarningFormat("LocalizationController: Cannot load locale {0}. Falling back to {1}.", targetLanguage, fallback);
+				if ( TryLoadLocaleTable(fallback, out var fallbackDraft) ) {
+					_loadedLanguage = fallback;
+					_currentLocaleIsDraft = fallbackDraft;
+					if ( _currentLocaleIsDraft ) {
+						Debug.LogWarningFormat("LocalizationController: Fallback locale {0} is marked as a draft", _loadedLanguage);
+					}
+					Debug.LogFormat("Fallback locale load finished ({0}). Loaded {1} elements.", _loadedLanguage, _baseTable.Count);
 					return;
 				}
 			}
 
-			var pathParts = path.Split('.');
-			XmlNode currentNode = loc.DocumentElement; // root node
+			_loadedLanguage = fallback;
+			Debug.LogError("LocalizationController: Cannot load default locale.");
+		}
 
-			// Создаем все отсутствующие родительские ноды
-			for (int i = 1; i < pathParts.Length - 1; i++) {
-				var nextNode = currentNode.SelectSingleNode(pathParts[i]);
-				if (nextNode == null) {
-					nextNode = loc.CreateElement(pathParts[i]);
-					currentNode.AppendChild(nextNode);
+		static bool TryLoadLocaleTable(SystemLanguage language, out bool isDraft) {
+			isDraft = false;
+			var hasStreaming = _streamingAssetsLanguages.Contains(language);
+			if ( hasStreaming ) {
+				var streamingText = ReadStreamingAssetsLocaleText(language);
+				if ( !string.IsNullOrEmpty(streamingText) && _baseTable.LoadFromXml(streamingText, out _) ) {
+					isDraft = _baseTable.IsDraft;
+					return true;
 				}
-				currentNode = nextNode;
-			}
 
-			// Создаем конечную ноду
-			var nodeName = pathParts[pathParts.Length - 1];
-			var element = loc.CreateElement(nodeName);
-			var textAttr = loc.CreateAttribute("text");
-			textAttr.Value = value;
-			element.Attributes.Append(textAttr);
-			currentNode.AppendChild(element);
-		}
-
-		public static void UpdateEntry(string path, string newValue, SystemLanguage language, bool create = false) {
-			var filePath = string.Format(LocFileFormatPath, language);
-			var loc = XmlUtils.LoadXmlDocumentFromAssets(filePath);
-			if ( loc == null ) {
-				Debug.LogError($"LocalizationController.UpdateEntry: Cannot load locale file for {language}");
-				return;
-			}
-			var node = loc.SelectSingleNode("root/" + path.Replace('.', '/'));
-			if ( node == null ) {
-				if ( create ) {
-					CreateNewLocaleEntry(path, newValue, loc);
-#if UNITY_EDITOR
-					loc.Save("Assets/Resources/" + filePath + ".xml");
-					UnityEditor.AssetDatabase.Refresh();
-#endif
-					return;
+				Debug.LogErrorFormat("LocalizationController: Cannot load locale {0} from streaming assets. Trying to fallback to resources.", language);
+				if ( !_config.ContainsSupportedLanguage(language) ) {
+					return false;
 				}
-				Debug.LogError($"LocalizationController.UpdateEntry: Cannot find node with path {path} in locale {language}");
-				return;
 			}
-			var attr = node.Attributes["text"];
-			if ( attr == null ) {
-				Debug.LogError($"LocalizationController.UpdateEntry: Cannot find text attribute in node with path {path} in locale {language}");
-				return;
+
+			var xmlText = ReadResourcesLocaleText(language);
+			if ( string.IsNullOrEmpty(xmlText) || !_baseTable.LoadFromXml(xmlText, out _) ) {
+				return false;
 			}
-			attr.Value = newValue;
+
+			isDraft = _baseTable.IsDraft;
+			return true;
+		}
+
+		static string ReadResourcesLocaleText(SystemLanguage language) {
 #if UNITY_EDITOR
-			loc.Save("Assets/Resources/" + filePath + ".xml");
-			UnityEditor.AssetDatabase.Refresh();
+			if ( ResourceXmlLoaderOverride != null ) {
+				return ResourceXmlLoaderOverride(language);
+			}
 #endif
+			var resourcePath = string.Format(LocFileFormatPath, language);
+			var asset = Resources.Load<TextAsset>(resourcePath);
+			if ( !asset ) {
+				return null;
+			}
+			var xmlText = asset.text;
+			Resources.UnloadAsset(asset);
+			return xmlText;
 		}
 
-		public static string GetEntryFromFile( string path, SystemLanguage language) {
-			var filePath = string.Format(LocFileFormatPath, language);
-			var loc = XmlUtils.LoadXmlDocumentFromAssets(filePath);
-			if ( loc == null ) {
-				Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot load locale file for {language}");
-				return "!!!";
+		static string ReadStreamingAssetsLocaleText(SystemLanguage language) {
+#if UNITY_EDITOR
+			if ( StreamingXmlLoaderOverride != null ) {
+				return StreamingXmlLoaderOverride(language);
 			}
-			var node = loc.SelectSingleNode("root/" + path.Replace('.', '/'));
-			if ( node == null ) {
-				//Debug.LogError($"LocalizationController.GetEntryFromFile: Cannot find node with path {path} in locale {language}");
-				return "!!!";
+#endif
+			var fullPath = Path.Combine(Application.streamingAssetsPath, StreamingAssetsPath, $"Locale_{language}.xml");
+			if ( !File.Exists(fullPath) ) {
+				Debug.LogWarningFormat("LocalizationController: StreamingAssets file not found at '{0}'", fullPath);
+				return null;
 			}
-			return node.GetAttrValue("text", "!!!");
+			try {
+				return File.ReadAllText(fullPath);
+			} catch ( Exception e ) {
+				Debug.LogWarningFormat("LocalizationController: Failed to read '{0}': {1}", fullPath, e.Message);
+				return null;
+			}
 		}
-	}
 
-	public sealed class TranslationNode {
-		public string Path;
-		public string Text;
-		public string NextLine;
-		public float  Duration = 3f;
+		static void LogFormatError(string id, FormatException e) {
+			Debug.LogErrorFormat("LocalizationController.TransFormat: Invalid format for key '{0}' (language {1}): {2}", id, _loadedLanguage, e.Message);
+		}
 	}
 
 	/// <summary><see cref="IsDraft"/> mirrors <see cref="LocalizationController.CurrentLocaleIsDraft"/> for the new locale.</summary>
