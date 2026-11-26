@@ -1,132 +1,238 @@
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
-#if UNITY_2017_3_OR_NEWER
+#if UNITY_2017_1_OR_NEWER
 using UnityEngine;
+using UnityEngine.SceneManagement;
 #endif
 
 namespace SMGCore.EventSys {
-	public sealed class EventManager {
+	public readonly struct EventChannelInfo {
+		public readonly Type EventType;
+		public readonly string Name;
+		public readonly int ActiveCount;
+		public readonly int PendingRemovalCount;
+		public readonly int FireDepth;
 
-		public const float CleanUpInterval = 10.0f;
+		public EventChannelInfo(Type eventType, string name, int activeCount, int pendingRemovalCount, int fireDepth) {
+			EventType = eventType;
+			Name = name;
+			ActiveCount = activeCount;
+			PendingRemovalCount = pendingRemovalCount;
+			FireDepth = fireDepth;
+		}
+	}
 
-		static EventManager _instance = null;
-		public static EventManager Instance {
-			get {
-				if ( _instance == null ) {
-					_instance = new EventManager();
-#if UNITY_2017_3_OR_NEWER
-					_instance.AddHelper();
-#endif
+	public static class EventManager {
+		internal interface IEventChannel {
+			Type EventType { get; }
+			string Name { get; }
+			int ActiveCount { get; }
+			int PendingRemovalCount { get; }
+			int FireDepth { get; }
+			int UnsubscribeAll(object watcher);
+			int PurgeDestroyedWatchers();
+			void ClearAndUnregister();
+			void CollectSubscribers(List<SubscriberSnapshot> output);
+		}
+
+		sealed class EventChannel<T> : IEventChannel, ISubscriptionOwner where T : struct {
+			const int InitialCapacity = 4;
+			static readonly string ChannelName = typeof(T).FullName ?? typeof(T).Name;
+			static readonly string ShortName = typeof(T).Name;
+
+			public static readonly EventChannel<T> Instance = new EventChannel<T>();
+
+			SubscriberList<Action<T>> _subscribers;
+			bool _registered;
+
+			public Type EventType => typeof(T);
+			public string Name => ChannelName;
+			public int ActiveCount => _subscribers.ActiveCount;
+			public int PendingRemovalCount => _subscribers.PendingRemovalCount;
+			public int FireDepth => _subscribers.FireDepth;
+
+			public EventSubscription Subscribe(object watcher, Action<T> action) {
+				var sub = _subscribers.Subscribe(this, watcher, action, InitialCapacity, ShortName);
+				if ( sub.IsValid && !_registered ) {
+					_registered = true;
+					RegisterChannel(this);
 				}
-				return _instance;
+				return sub;
 			}
-		}
 
-		public EventManager() {
-#if UNITY_EDITOR
-			EditorApplication.playModeStateChanged += OnPlaymodeChanged;
-#endif
-		}
+			public void Unsubscribe(Action<T> action) =>
+				_subscribers.Unsubscribe(action, ShortName);
 
-#if UNITY_EDITOR
-		void OnPlaymodeChanged(PlayModeStateChange e) {
-			if ( e == PlayModeStateChange.EnteredEditMode ) {
-				EditorApplication.playModeStateChanged -= OnPlaymodeChanged;
-				if ( _instance != null ) {
-					CleanUp();
+			public int UnsubscribeAll(object watcher) =>
+				_subscribers.UnsubscribeAll(watcher, ShortName);
+
+			public void Fire(T args) {
+				var count = _subscribers.BeginFire(ShortName);
+				if ( count == 0 ) {
+					return;
 				}
-				_instance = null;
-				//Debug.Log("Clear EventManager instance");
+				try {
+					for ( var i = 0; i < count; i++ ) {
+						if ( !_subscribers.TryGetActiveAction(i, ShortName, out var action) ) {
+							continue;
+						}
+						try {
+							action.Invoke(args);
+						} catch ( Exception e ) {
+							EventDiagnostics.LogException(e);
+						}
+					}
+				} finally {
+					_subscribers.EndFire();
+				}
+			}
+
+			public int PurgeDestroyedWatchers() =>
+				_subscribers.PurgeDestroyedWatchers(ShortName);
+
+			public void ClearAndUnregister() {
+				_subscribers.Clear();
+				_registered = false;
+			}
+
+			public void CollectSubscribers(List<SubscriberSnapshot> output) =>
+				_subscribers.CollectSubscribers(output);
+
+			bool ISubscriptionOwner.UnsubscribeByToken(ulong token) =>
+				_subscribers.UnsubscribeByToken(token, ShortName);
+		}
+
+		static readonly List<IEventChannel> _registeredChannels = new List<IEventChannel>(64);
+
+		public static int ChannelCount => _registeredChannels.Count;
+
+		public static bool DebugLogsEnabled {
+			get => EventDiagnostics.DebugLogsEnabled;
+			set => EventDiagnostics.DebugLogsEnabled = value;
+		}
+
+#if UNITY_EDITOR
+		[InitializeOnLoadMethod]
+		static void InitEditorHooks() {
+			EventDiagnostics.CaptureMainThread();
+			EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+		}
+
+		static void OnPlayModeStateChanged(PlayModeStateChange change) {
+			if ( change == PlayModeStateChange.ExitingEditMode ) {
+				// Runs before all [RuntimeInitializeOnLoadMethod(SubsystemRegistration)] callbacks.
+				ResetAll();
+			} else if ( change == PlayModeStateChange.EnteredEditMode ) {
+				SceneManager.sceneUnloaded -= OnSceneUnloaded;
+				ResetAll();
 			}
 		}
 #endif
 
-		public ConcurrentDictionary<Type, HandlerBase> Handlers {
-			get {
-				return _handlers;
-			}
+#if UNITY_2017_1_OR_NEWER
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		static void InitRuntimeState() {
+			EventDiagnostics.CaptureMainThread();
+#if !UNITY_EDITOR
+			ResetAll();
+#endif
+			SceneManager.sceneUnloaded -= OnSceneUnloaded;
+			SceneManager.sceneUnloaded += OnSceneUnloaded;
 		}
 
-		ConcurrentDictionary<Type, HandlerBase> _handlers = new ConcurrentDictionary<Type, HandlerBase>();
-
-		public static void Subscribe<T>(object watcher, Action<T> action) where T : struct {
-			Instance.Sub(watcher, action);
-		}
-
-		public static void Unsubscribe<T>(Action<T> action) where T : struct {
-			if ( _instance != null ) {
-				Instance.Unsub(action);
-			}
-		}
-
-		public static void Fire<T>() where T : struct {
-			var emptyStruct = new T();
-			Instance.FireEvent(emptyStruct);
-		}
-
-		public static void Fire<T>(T args) where T : struct {
-			Instance.FireEvent(args);
-		}
-
-		public static bool HasWatchers<T>() where T : struct {
-			return Instance.HasWatchersDirect<T>();
-		}
-
-		void Sub<T>(object watcher, Action<T> action) {
-			HandlerBase handler;
-			if ( !_handlers.TryGetValue(typeof(T), out handler) ) {
-				handler = _handlers.GetOrAdd(typeof(T), new Handler<T>());
-			}
-			(handler as Handler<T>).Subscribe(watcher, action);
-		}
-
-		void Unsub<T>(Action<T> action) {
-			HandlerBase handler = null;
-			if ( _handlers.TryGetValue(typeof(T), out handler) ) {
-				(handler as Handler<T>).Unsubscribe(action);
-			}
-		}
-
-		void FireEvent<T>(T args) {
-			HandlerBase handler = null;
-			if (!_handlers.TryGetValue(typeof(T), out handler)) {
-				handler = _handlers.GetOrAdd(typeof(T), new Handler<T>());
-			}
-			(handler as Handler<T>).Fire(args);
-		}
-
-		bool HasWatchersDirect<T>() where T : struct {
-			HandlerBase container = null;
-			if (_handlers.TryGetValue(typeof(T), out container)) {
-				return (container.Watchers.Count > 0);
-			}
-			return false;
-		}
-
-#if UNITY_2017_3_OR_NEWER
-		void AddHelper() {
-			var go = new GameObject("[EventHelper]");
-			go.AddComponent<EventHelper>();
+		static void OnSceneUnloaded(Scene scene) {
+			PurgeDestroyedWatchers();
 		}
 #endif
 
-		public void CheckHandlersOnLoad() {
-			var iter = _handlers.GetEnumerator();
-			while (iter.MoveNext()) {
-				iter.Current.Value.FixWatchers();
+		public static EventSubscription Subscribe<T>(object watcher, Action<T> action) where T : struct =>
+			EventChannel<T>.Instance.Subscribe(watcher, action);
+
+		public static void Unsubscribe<T>(Action<T> action) where T : struct =>
+			EventChannel<T>.Instance.Unsubscribe(action);
+
+		public static int UnsubscribeAll(object watcher) {
+			if ( watcher == null ) {
+				return 0;
+			}
+			var removed = 0;
+			for ( var i = 0; i < _registeredChannels.Count; i++ ) {
+				removed += _registeredChannels[i].UnsubscribeAll(watcher);
+			}
+			return removed;
+		}
+
+		public static void Fire<T>() where T : struct =>
+			EventChannel<T>.Instance.Fire(default);
+
+		public static void Fire<T>(T args) where T : struct =>
+			EventChannel<T>.Instance.Fire(args);
+
+		public static int PurgeDestroyedWatchers() {
+			var removed = 0;
+			for ( var i = 0; i < _registeredChannels.Count; i++ ) {
+				removed += _registeredChannels[i].PurgeDestroyedWatchers();
+			}
+			return removed;
+		}
+
+		public static void ResetAll() {
+			for ( var i = 0; i < _registeredChannels.Count; i++ ) {
+				_registeredChannels[i].ClearAndUnregister();
+			}
+			_registeredChannels.Clear();
+		}
+
+		public static void CollectChannels(List<EventChannelInfo> output) {
+			if ( output == null ) {
+				return;
+			}
+			output.Clear();
+			for ( var i = 0; i < _registeredChannels.Count; i++ ) {
+				var ch = _registeredChannels[i];
+				output.Add(new EventChannelInfo(
+					ch.EventType,
+					ch.Name,
+					ch.ActiveCount,
+					ch.PendingRemovalCount,
+					ch.FireDepth
+				));
 			}
 		}
 
-		public void CleanUp() {
-			var iter = _handlers.GetEnumerator();
-			while (iter.MoveNext()) {
-				iter.Current.Value.CleanUp();
+		public static void CollectChannelSubscribersAt(int channelIndex, List<SubscriberSnapshot> output) {
+			if ( output == null ) {
+				return;
 			}
+			output.Clear();
+			if ( channelIndex < 0 || channelIndex >= _registeredChannels.Count ) {
+				return;
+			}
+			_registeredChannels[channelIndex].CollectSubscribers(output);
+		}
+
+		public static void CollectChannelSubscribers(Type eventType, List<SubscriberSnapshot> output) {
+			if ( eventType == null || output == null ) {
+				return;
+			}
+			output.Clear();
+			for ( var i = 0; i < _registeredChannels.Count; i++ ) {
+				var ch = _registeredChannels[i];
+				if ( ch.EventType == eventType ) {
+					ch.CollectSubscribers(output);
+					return;
+				}
+			}
+		}
+
+		static void RegisterChannel(IEventChannel channel) {
+			_registeredChannels.Add(channel);
 		}
 	}
 }

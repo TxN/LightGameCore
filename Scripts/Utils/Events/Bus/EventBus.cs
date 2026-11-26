@@ -1,89 +1,100 @@
 using System;
+using SMGCore.EventSys;
 
 namespace Utils {
-	public abstract class BaseEventBus {
-		protected abstract HandlerBase Handler { get; }
+	public sealed class EventBus<T> : ISubscriptionOwner {
+		const int InitialCapacity = 2;
+		static readonly string EventName = typeof(T).Name;
 
-		public abstract void FixWatchers();
-		public abstract void CleanUp();
+		SubscriberList<Action<T>> _subscribers;
 
-		protected void TryRegister() {
-#if UNITY_EDITOR
-			if ( !UnityEngine.Application.isPlaying ) {
-				return;
-			}
-#endif
-			EventBusManager.Instance.TryRegister(this);
-		}
+		public int SubscriberCount => _subscribers.ActiveCount;
 
-		protected void TryUnregister() {
-			if ( Handler.Watchers.Count > 0 ) {
-				return;
-			}
-			if ( EventBusManager.Exists ) {
-				EventBusManager.Instance.TryUnregister(this);
-			}
-		}
-	}
-
-	public sealed class EventBus<T> : BaseEventBus {
-		readonly Handler<T> _handler = new Handler<T>();
-
-		protected override HandlerBase Handler => _handler;
-		public int ActionsCount => _handler.ActionsCount;
-		public void Subscribe(object watcher, Action<T> action) {
-			TryRegister();
-			_handler.Subscribe(watcher, action);
-		}
+		// Keep a single Subscribe method (no overloads) so BaseTerminal.RegisterEventHandler reflection stays unambiguous.
+		public EventSubscription Subscribe(object watcher, Action<T> action) =>
+			_subscribers.Subscribe(this, watcher, action, InitialCapacity, EventName);
 
 		public void Unsubscribe(Action<T> action) =>
-			_handler.Unsubscribe(action);
+			_subscribers.Unsubscribe(action, EventName);
+
+		public int UnsubscribeAll(object watcher) =>
+			_subscribers.UnsubscribeAll(watcher, EventName);
 
 		public void Fire(T arg) {
-			_handler.Fire(arg);
-			TryUnregister();
+			var count = _subscribers.BeginFire(EventName);
+			if ( count == 0 ) {
+				return;
+			}
+			try {
+				for ( var i = 0; i < count; i++ ) {
+					if ( !_subscribers.TryGetActiveAction(i, EventName, out var action) ) {
+						continue;
+					}
+					try {
+						action.Invoke(arg);
+					} catch ( Exception e ) {
+						EventDiagnostics.LogException(e);
+					}
+				}
+			} finally {
+				_subscribers.EndFire();
+			}
 		}
 
-		public override void FixWatchers() {
-			_handler.FixWatchers();
-			TryUnregister();
-		}
+		public void Clear() => _subscribers.Clear();
 
-		public override void CleanUp() {
-			_handler.CleanUp();
-			TryUnregister();
-		}
+		public int PurgeDestroyedWatchers() => _subscribers.PurgeDestroyedWatchers(EventName);
 
-		public override string ToString() => typeof(T).Name;
+		bool ISubscriptionOwner.UnsubscribeByToken(ulong token) =>
+			_subscribers.UnsubscribeByToken(token, EventName);
+
+		public override string ToString() => EventName;
 	}
 
-	public sealed class EventBus : BaseEventBus {
-		readonly UntypedHandler _handler = new UntypedHandler();
+	public sealed class EventBus : ISubscriptionOwner {
+		const int InitialCapacity = 2;
+		const string EventName = "EventBus";
 
-		protected override HandlerBase Handler => _handler;
+		SubscriberList<Action> _subscribers;
 
-		public void Subscribe(object watcher, Action action) {
-			TryRegister();
-			_handler.Subscribe(watcher, action);
-		}
+		public int SubscriberCount => _subscribers.ActiveCount;
+
+		public EventSubscription Subscribe(object watcher, Action action) =>
+			_subscribers.Subscribe(this, watcher, action, InitialCapacity, EventName);
 
 		public void Unsubscribe(Action action) =>
-			_handler.Unsubscribe(action);
+			_subscribers.Unsubscribe(action, EventName);
+
+		public int UnsubscribeAll(object watcher) =>
+			_subscribers.UnsubscribeAll(watcher, EventName);
 
 		public void Fire() {
-			_handler.Fire();
-			TryUnregister();
+			var count = _subscribers.BeginFire(EventName);
+			if ( count == 0 ) {
+				return;
+			}
+			try {
+				for ( var i = 0; i < count; i++ ) {
+					if ( !_subscribers.TryGetActiveAction(i, EventName, out var action) ) {
+						continue;
+					}
+					try {
+						action.Invoke();
+					} catch ( Exception e ) {
+						EventDiagnostics.LogException(e);
+					}
+				}
+			} finally {
+				_subscribers.EndFire();
+			}
 		}
 
-		public override void FixWatchers() {
-			_handler.FixWatchers();
-			TryUnregister();
-		}
+		public void Clear() => _subscribers.Clear();
 
-		public override void CleanUp() {
-			_handler.CleanUp();
-			TryUnregister();
-		}
+		public int PurgeDestroyedWatchers() => _subscribers.PurgeDestroyedWatchers(EventName);
+
+		bool ISubscriptionOwner.UnsubscribeByToken(ulong token) =>
+			_subscribers.UnsubscribeByToken(token, EventName);
 
 		public override string ToString() => "Untyped";
 	}
