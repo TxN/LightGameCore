@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace SMGCore.Parser {
 	public class DateTimeTypeSerializer : SimpleTypeSerializer {
@@ -9,7 +10,7 @@ namespace SMGCore.Parser {
 			if ( val.Year < 1900 ) {
 				return null;
 			}
-			return val.ToString(string.IsNullOrEmpty(format) ? "yyyy-MM-dd HH-mm" : format);
+			return val.ToString(string.IsNullOrEmpty(format) ? "yyyy-MM-dd HH-mm" : format, CultureInfo.InvariantCulture);
 		}
 	}
 }

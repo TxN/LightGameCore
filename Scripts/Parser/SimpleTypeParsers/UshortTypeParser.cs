@@ -7,7 +7,7 @@ namespace SMGCore.Parser {
 
 		public override object ParseValue(string value, string format = null) {
 			if ( string.IsNullOrEmpty(value) ) {
-				return 0;
+				return (ushort)0;
 			}
 
 			ushort.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result);

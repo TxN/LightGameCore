@@ -9,7 +9,7 @@ namespace SMGCore.Parser {
 			if ( double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result) ) {
 				return result;
 			}
-			return 0f;
+			return 0d;
 		}
 	}
 }
